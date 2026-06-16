@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Folio Extension Test Form</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.5;
+      }
+
+      body {
+        background: #f6f8fc;
+        color: #141821;
+        margin: 0;
+        padding: 32px;
+      }
+
+      main {
+        background: #ffffff;
+        border: 1px solid #d9e0ec;
+        border-radius: 18px;
+        box-shadow: 0 18px 60px rgba(20, 24, 33, 0.08);
+        margin: 0 auto;
+        max-width: 860px;
+        overflow: hidden;
+      }
+
+      header,
+      form {
+        padding: 28px;
+      }
+
+      header {
+        border-bottom: 1px solid #e7ecf5;
+      }
+
+      h1 {
+        font-size: 28px;
+        line-height: 1.1;
+        margin: 0;
+      }
+
+      p {
+        color: #626d7f;
+        margin: 8px 0 0;
+      }
+
+      fieldset {
+        border: 0;
+        display: grid;
+        gap: 16px;
+        margin: 0 0 28px;
+        padding: 0;
+      }
+
+      legend {
+        font-size: 16px;
+        font-weight: 800;
+        margin-bottom: 12px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      input,
+      textarea,
+      select {
+        border: 1px solid #ccd5e3;
+        border-radius: 10px;
+        font: inherit;
+        min-height: 42px;
+        padding: 9px 11px;
+      }
+
+      textarea {
+        min-height: 110px;
+        resize: vertical;
+      }
+
+      .wide {
+        grid-column: 1 / -1;
+      }
+
+      .actions {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+      }
+
+      button {
+        background: #1f5fbf;
+        border: 0;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+        padding: 10px 14px;
+      }
+
+      output {
+        color: #626d7f;
+        font-size: 13px;
+      }
+
+      @media (max-width: 720px) {
+        body {
+          padding: 14px;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Folio Extension Test Form</h1>
+        <p>Use this page to test scanning, matching, preserving existing values, and filling common application fields.</p>
+      </header>
+
+      <form id="application-form">
+        <fieldset>
+          <legend>Contact</legend>
+          <div class="grid">
+            <label>
+              First name
+              <input name="first_name" id="first-name" autocomplete="given-name" placeholder="Ada" />
+            </label>
+            <label>
+              Last name
+              <input name="last_name" id="last-name" autocomplete="family-name" placeholder="Lovelace" />
+            </label>
+            <label class="wide">
+              Full legal name
+              <input name="full_name" id="full-name" autocomplete="name" placeholder="Ada Lovelace" />
+            </label>
+            <label>
+              Email address
+              <input type="email" name="email" id="email" autocomplete="email" placeholder="ada@example.com" />
+            </label>
+            <label>
+              Phone number
+              <input type="tel" name="phone" id="phone" autocomplete="tel" placeholder="+1 555 0100" />
+            </label>
+            <label class="wide">
+              Street address
+              <input name="address" id="address" autocomplete="street-address" placeholder="123 Main Street" />
+            </label>
+            <label>
+              City
+              <select name="city" id="city" autocomplete="address-level2">
+                <option value="">Choose a city</option>
+                <option value="nyc">New York City</option>
+                <option value="sf">San Francisco</option>
+                <option value="toronto">Toronto</option>
+                <option value="casablanca">Casablanca</option>
+                <option value="london">London</option>
+              </select>
+            </label>
+            <label>
+              Country
+              <select name="country" id="country" autocomplete="country-name">
+                <option value="">Choose a country</option>
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="MA">Morocco</option>
+                <option value="GB">United Kingdom</option>
+                <option value="FR">France</option>
+              </select>
+            </label>
+            <label>
+              Postal code
+              <input name="postal_code" id="postal-code" autocomplete="postal-code" />
+            </label>
+            <label>
+              Portfolio
+              <input type="url" name="portfolio_url" id="portfolio" placeholder="https://example.com" />
+            </label>
+            <label>
+              LinkedIn profile
+              <input type="url" name="linkedin" id="linkedin" placeholder="https://linkedin.com/in/example" />
+            </label>
+            <label>
+              GitHub profile
+              <input type="url" name="github" id="github" placeholder="https://github.com/example" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Contact en français</legend>
+          <div class="grid">
+            <label>
+              Prénom
+              <input name="fr_prenom" id="fr-prenom" placeholder="Ada" />
+            </label>
+            <label>
+              Nom de famille
+              <input name="fr_nom" id="fr-nom" placeholder="Lovelace" />
+            </label>
+            <label class="wide">
+              Nom complet
+              <input name="fr_nom_complet" id="fr-nom-complet" placeholder="Ada Lovelace" />
+            </label>
+            <label>
+              Adresse e-mail
+              <input type="email" name="fr_email" id="fr-email" placeholder="ada@example.com" />
+            </label>
+            <label>
+              Numéro de téléphone
+              <input type="tel" name="fr_telephone" id="fr-telephone" placeholder="+1 555 0100" />
+            </label>
+            <label class="wide">
+              Adresse postale
+              <input name="fr_adresse" id="fr-adresse" placeholder="123 Main Street" />
+            </label>
+            <label>
+              Ville
+              <select name="fr_ville" id="fr-ville">
+                <option value="">Choisir une ville</option>
+                <option value="nyc">New York City</option>
+                <option value="sf">San Francisco</option>
+                <option value="toronto">Toronto</option>
+                <option value="casablanca">Casablanca</option>
+                <option value="london">London</option>
+              </select>
+            </label>
+            <label>
+              Pays
+              <select name="fr_pays" id="fr-pays">
+                <option value="">Choisir un pays</option>
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="MA">Morocco</option>
+                <option value="GB">United Kingdom</option>
+                <option value="FR">France</option>
+              </select>
+            </label>
+            <label>
+              Code postal
+              <input name="fr_code_postal" id="fr-code-postal" />
+            </label>
+            <label>
+              Site web
+              <input type="url" name="fr_site_web" id="fr-site-web" placeholder="https://example.com" />
+            </label>
+            <label>
+              Profil LinkedIn
+              <input type="url" name="fr_linkedin" id="fr-linkedin" placeholder="https://linkedin.com/in/example" />
+            </label>
+            <label>
+              Profil GitHub
+              <input type="url" name="fr_github" id="fr-github" placeholder="https://github.com/example" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Application</legend>
+          <div class="grid">
+            <label>
+              Current company
+              <input name="current_company" id="current-company" />
+            </label>
+            <label>
+              Current title
+              <input name="current_title" id="current-title" />
+            </label>
+            <label>
+              Work authorization
+              <select name="work_authorization" id="work-authorization">
+                <option value="">Choose one</option>
+                <option>Authorized to work in this country</option>
+                <option>Require sponsorship</option>
+              </select>
+            </label>
+            <label>
+              Resume / CV
+              <input type="file" name="resume_upload" id="resume-upload" accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain" />
+            </label>
+            <label>
+              Notice period
+              <input name="notice_period" id="notice-period" value="Two weeks" />
+            </label>
+            <label class="wide">
+              Tell us about yourself
+              <textarea name="about_you" id="about-you" placeholder="Short professional intro"></textarea>
+            </label>
+            <label class="wide">
+              Why do you want to work here?
+              <textarea name="motivation" id="motivation"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit">Fake submit</button>
+          <output id="result" aria-live="polite"></output>
+        </div>
+      </form>
+    </main>
+
+    <script>
+      document.getElementById("application-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        document.getElementById("result").textContent = "Submit intercepted for testing.";
+      });
+    </script>
+  </body>
+</html>
