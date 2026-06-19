@@ -1007,6 +1007,86 @@ button:disabled {
   white-space: pre;
 }
 
+.options-content-grid > .custom-answers-card {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.custom-answers-data-table {
+  background: var(--folio-soft-surface);
+  width: 100%;
+}
+
+.custom-answers-data-table [data-slot="table"] {
+  min-width: 960px;
+  table-layout: fixed;
+}
+
+.custom-answers-data-table [data-slot="table-head"] {
+  background: var(--folio-soft-surface-strong);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.custom-answers-data-table [data-slot="table-cell"] {
+  vertical-align: top;
+}
+
+.custom-answer-question-column {
+  width: 30%;
+}
+
+.custom-answer-answer-column {
+  width: 44%;
+}
+
+.custom-answer-tags-column {
+  width: 16%;
+}
+
+.custom-answer-actions-column {
+  width: 120px;
+}
+
+.custom-answers-data-table [data-slot="input"],
+.custom-answers-data-table [data-slot="textarea"] {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.custom-answers-table-shell {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+}
+
+.custom-answers-table-toolbar {
+  display: flex;
+  width: 100%;
+}
+
+.custom-answers-filter-input {
+  max-width: 520px;
+}
+
+.custom-answer-table-textarea {
+  min-height: 44px;
+  resize: vertical;
+  white-space: normal;
+}
+
+.custom-answer-remove-button {
+  width: 100%;
+}
+
+.custom-answers-table-count {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  margin: 0;
+}
+
 .location-select-trigger {
   min-height: 38px;
 }

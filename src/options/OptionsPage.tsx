@@ -38,6 +38,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
@@ -733,7 +734,7 @@ export function OptionsPage() {
             )}
 
             {activeSection === "personal" && (
-              <Card>
+              <Card className="span-columns">
                 <CardHeader>
                   <CardTitle>Personal information</CardTitle>
                   <CardDescription>Core contact details Folio can safely match to job application forms.</CardDescription>
@@ -1024,7 +1025,7 @@ export function OptionsPage() {
                             />
                           </div>
                         ))}
-                        <DateField
+                        <YearField
                           id={`education-${index}-startDate`}
                           label="Start date"
                           value={entry.startDate}
@@ -1136,7 +1137,7 @@ export function OptionsPage() {
             )}
 
             {activeSection === "answers" && (
-              <Card>
+              <Card className="span-columns custom-answers-card">
                 <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
                   <div>
                     <CardTitle>Custom answers</CardTitle>
@@ -1151,54 +1152,16 @@ export function OptionsPage() {
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {profile.customAnswers.map((entry, index) => (
-                    <article key={index} className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
-                      <div className="flex items-center justify-between">
-                        <strong className="text-sm font-medium">Answer {index + 1}</strong>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setProfile((current) => ({
-                              ...current,
-                              customAnswers: current.customAnswers.filter((_, entryIndex) => entryIndex !== index)
-                            }))
-                          }
-                          disabled={profile.customAnswers.length === 1}
-                        >
-                          <Trash2 size={16} />
-                          Remove
-                        </Button>
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`answer-${index}-question`}>Question</Label>
-                          <Input
-                            id={`answer-${index}-question`}
-                            value={entry.question}
-                            onChange={(event) => updateAnswer(index, "question", event.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor={`answer-${index}-tags`}>Tags</Label>
-                          <Input
-                            id={`answer-${index}-tags`}
-                            value={entry.tags.join(", ")}
-                            onChange={(event) => updateAnswer(index, "tags", event.target.value)}
-                            placeholder="comma, separated, tags"
-                          />
-                        </div>
-                        <div className="space-y-1.5 sm:col-span-2">
-                          <Label htmlFor={`answer-${index}-answer`}>Answer</Label>
-                          <Textarea
-                            id={`answer-${index}-answer`}
-                            value={entry.answer}
-                            onChange={(event) => updateAnswer(index, "answer", event.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                  <CustomAnswersTable
+                    answers={profile.customAnswers}
+                    onUpdate={updateAnswer}
+                    onRemove={(index) =>
+                      setProfile((current) => ({
+                        ...current,
+                        customAnswers: current.customAnswers.filter((_, entryIndex) => entryIndex !== index)
+                      }))
+                    }
+                  />
                 </CardContent>
               </Card>
             )}
@@ -1290,19 +1253,22 @@ function formatComparisonCount(value: number): string {
 }
 
 function getAutofillLevel(fields: number, forms: number): { kicker: string; title: string; badge: string } {
-  if (fields >= 250 || forms >= 40) {
-    return { kicker: "Automation rank", title: "Form slayer", badge: "Elite" };
-  }
+  const score = fields + forms * 8;
+  const ranks = [
+    { min: 900, title: "Offer letter orbit", badge: "Legend" },
+    { min: 600, title: "Application astronaut", badge: "Cosmic" },
+    { min: 360, title: "Form wizard", badge: "Arcane" },
+    { min: 220, title: "Keyboard escape artist", badge: "Elite" },
+    { min: 120, title: "Application sprinter", badge: "Pro" },
+    { min: 55, title: "Typing dodger", badge: "Rising" },
+    { min: 15, title: "Blue spark rookie", badge: "Fresh" },
+    { min: 0, title: "Ready for launch", badge: "Starter" }
+  ];
 
-  if (fields >= 100 || forms >= 15) {
-    return { kicker: "Automation rank", title: "Application sprinter", badge: "Pro" };
-  }
-
-  if (fields >= 25 || forms >= 5) {
-    return { kicker: "Automation rank", title: "Typing dodger", badge: "Rising" };
-  }
-
-  return { kicker: "Automation rank", title: "Ready for launch", badge: "Starter" };
+  return {
+    kicker: "Automation rank",
+    ...(ranks.find((rank) => score >= rank.min) ?? ranks[ranks.length - 1])
+  };
 }
 
 function getActivityFunFacts(fields: number, forms: number, seconds: number): string[] {
@@ -1389,6 +1355,118 @@ function getDocumentTags(documents: ProfileDocument[]): string[] {
   return Array.from(new Set(documents.flatMap((document) => document.tags))).filter(Boolean).sort((a, b) => a.localeCompare(b));
 }
 
+type CustomAnswerRow = CustomAnswer & { rowIndex: number };
+
+function CustomAnswersTable({
+  answers,
+  onUpdate,
+  onRemove
+}: {
+  answers: CustomAnswer[];
+  onUpdate: (index: number, key: keyof CustomAnswer, value: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  const [filter, setFilter] = useState("");
+  const visibleAnswers = useMemo<CustomAnswerRow[]>(() => {
+    const normalizedFilter = filter.trim().toLowerCase();
+    const rows = answers.map((answer, rowIndex) => ({ ...answer, rowIndex }));
+
+    if (!normalizedFilter) {
+      return rows;
+    }
+
+    return rows.filter((answer) =>
+      [answer.question, answer.answer, answer.tags.join(" ")]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedFilter)
+    );
+  }, [answers, filter]);
+
+  return (
+    <div className="custom-answers-table-shell">
+      <div className="custom-answers-table-toolbar">
+        <Input
+          placeholder="Filter answers..."
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+          className="custom-answers-filter-input"
+        />
+      </div>
+      <div className="custom-answers-data-table overflow-hidden rounded-xl border border-border/60">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="custom-answer-question-column">Question</TableHead>
+              <TableHead className="custom-answer-answer-column">Answer</TableHead>
+              <TableHead className="custom-answer-tags-column">Tags</TableHead>
+              <TableHead className="custom-answer-actions-column">
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visibleAnswers.length > 0 ? (
+              visibleAnswers.map((answer) => (
+                <TableRow key={answer.rowIndex}>
+                  <TableCell>
+                    <Input
+                      aria-label={`Question ${answer.rowIndex + 1}`}
+                      value={answer.question}
+                      onChange={(event) => onUpdate(answer.rowIndex, "question", event.target.value)}
+                      placeholder="Question Folio should recognize"
+                      className="custom-answer-question-input"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Textarea
+                      aria-label={`Answer ${answer.rowIndex + 1}`}
+                      value={answer.answer}
+                      onChange={(event) => onUpdate(answer.rowIndex, "answer", event.target.value)}
+                      placeholder="Reusable answer"
+                      className="custom-answer-table-textarea"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      aria-label={`Tags ${answer.rowIndex + 1}`}
+                      value={answer.tags.join(", ")}
+                      onChange={(event) => onUpdate(answer.rowIndex, "tags", event.target.value)}
+                      placeholder="learned, motivation"
+                      className="custom-answer-tags-input"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onRemove(answer.rowIndex)}
+                      disabled={answers.length === 1}
+                      className="custom-answer-remove-button"
+                    >
+                      <Trash2 size={16} />
+                      Remove
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                  No custom answers found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <p className="custom-answers-table-count">
+        Showing {visibleAnswers.length} of {answers.length} saved answers.
+      </p>
+    </div>
+  );
+}
+
 function LocationSelect({
   id,
   label,
@@ -1471,6 +1549,35 @@ function DateField({
   );
 }
 
+function YearField({
+  id,
+  label,
+  value,
+  onChange,
+  disabled = false
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        inputMode="numeric"
+        maxLength={4}
+        placeholder="YYYY"
+        value={formatYearInputValue(value)}
+        onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 4))}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
 function labelFromKey(key: string): string {
   return key.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
 }
@@ -1491,4 +1598,13 @@ function formatDateInputValue(value: string): string {
   }
 
   return value;
+}
+
+function formatYearInputValue(value: string): string {
+  if (!value) {
+    return "";
+  }
+
+  const isoYear = value.match(/^(\d{4})/);
+  return isoYear?.[1] ?? value.replace(/\D/g, "").slice(0, 4);
 }

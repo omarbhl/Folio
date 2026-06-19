@@ -1,12 +1,16 @@
 import { detectFields, getFillableElements, getLabelText, getNearbyText } from "../shared/fieldDetection";
 import { isSafeFillMatch, matchFields } from "../shared/fieldMatching";
-import { getProfile } from "../shared/storage";
-import type { ContentMessage, DetectedUploadField, FillRequestMatch, FillResult } from "../shared/types";
+import { getProfile, saveProfile } from "../shared/storage";
+import type { ContentMessage, DetectedField, DetectedUploadField, FillRequestMatch, FillResult, FolioProfile } from "../shared/types";
 
 const FOLIO_FILLED_CLASS = "folio-filled";
 const FOLIO_STYLE_ID = "folio-filled-indicator-style";
 const AVAILABILITY_DEBOUNCE_MS = 500;
+const CUSTOM_ANSWER_LEARN_DEBOUNCE_MS = 900;
+const MIN_CUSTOM_ANSWER_LENGTH = 2;
 const indicatorListeners = new WeakSet<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>();
+const learningIgnoredElements = new WeakSet<Element>();
+const learningTimers = new WeakMap<Element, number>();
 let availabilityTimer: number | undefined;
 
 chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
@@ -41,6 +45,8 @@ void updateAvailabilityBadge();
 window.addEventListener("focus", scheduleAvailabilityBadgeUpdate, true);
 window.addEventListener("input", scheduleAvailabilityBadgeUpdate, true);
 window.addEventListener("change", scheduleAvailabilityBadgeUpdate, true);
+window.addEventListener("input", scheduleCustomAnswerLearning, true);
+window.addEventListener("change", scheduleCustomAnswerLearning, true);
 new MutationObserver(scheduleAvailabilityBadgeUpdate).observe(document.documentElement, {
   childList: true,
   subtree: true,
@@ -75,7 +81,9 @@ function fillFields(matches: FillRequestMatch[], overwriteExisting: boolean): Fi
       continue;
     }
 
+    learningIgnoredElements.add(element);
     const didFill = setElementValue(element, match.value, match.alternatives ?? []);
+    window.setTimeout(() => learningIgnoredElements.delete(element), 0);
     if (!didFill) {
       skippedCount += 1;
       continue;
@@ -229,6 +237,149 @@ function makeUploadFile(fileName: string, mimeType: string, content: string, con
 function scheduleAvailabilityBadgeUpdate(): void {
   window.clearTimeout(availabilityTimer);
   availabilityTimer = window.setTimeout(() => void updateAvailabilityBadge(), AVAILABILITY_DEBOUNCE_MS);
+}
+
+function scheduleCustomAnswerLearning(event: Event): void {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLTextAreaElement)) {
+    return;
+  }
+
+  if (learningIgnoredElements.has(target) || target.disabled || target.readOnly || isIgnoredLearningInput(target)) {
+    return;
+  }
+
+  window.clearTimeout(learningTimers.get(target));
+  const timer = window.setTimeout(() => void learnCustomAnswer(target), CUSTOM_ANSWER_LEARN_DEBOUNCE_MS);
+  learningTimers.set(target, timer);
+}
+
+async function learnCustomAnswer(element: HTMLInputElement | HTMLTextAreaElement): Promise<void> {
+  const answer = element.value.trim();
+  if (answer.length < MIN_CUSTOM_ANSWER_LENGTH) {
+    return;
+  }
+
+  const field = getDetectedFieldForElement(element);
+  if (!field) {
+    return;
+  }
+
+  const question = getReusableQuestionText(field);
+  if (!question) {
+    return;
+  }
+
+  const profile = await getProfile();
+  if (!profile || isPersonalProfileAnswer(answer, profile) || isPersonalProfileField(field, profile)) {
+    return;
+  }
+
+  const nextProfile = upsertCustomAnswer(profile, question, answer);
+  if (nextProfile !== profile) {
+    await saveProfile(nextProfile);
+  }
+}
+
+function getDetectedFieldForElement(element: HTMLInputElement | HTMLTextAreaElement): DetectedField | null {
+  const elements = getFillableElements();
+  const index = elements.indexOf(element);
+  if (index < 0) {
+    return null;
+  }
+
+  return detectFields().find((field) => field.index === index) ?? null;
+}
+
+function getReusableQuestionText(field: DetectedField): string {
+  const candidates = [field.labelText, field.ariaLabel, field.placeholder, field.nearbyText]
+    .map(cleanQuestionText)
+    .filter(Boolean);
+  const question = candidates.find((candidate) => isLikelyReusableQuestion(candidate)) ?? "";
+  return question;
+}
+
+function isLikelyReusableQuestion(value: string): boolean {
+  const normalized = normalizeQuestion(value);
+  if (normalized.length < 8 || normalized.split(" ").length < 2) {
+    return false;
+  }
+
+  if (isPersonalQuestionText(normalized)) {
+    return false;
+  }
+
+  return value.includes("?") || normalized.length >= 18;
+}
+
+function isPersonalProfileField(field: DetectedField, profile: FolioProfile): boolean {
+  return matchFields([field], profile).some((match) => match.profilePath.startsWith("personal."));
+}
+
+function isPersonalProfileAnswer(answer: string, profile: FolioProfile): boolean {
+  const normalizedAnswer = normalizeQuestion(answer);
+  return Object.values(profile.personal).some((value) => value.trim().length > 0 && normalizeQuestion(value) === normalizedAnswer);
+}
+
+function upsertCustomAnswer(profile: FolioProfile, question: string, answer: string): FolioProfile {
+  const normalizedQuestion = normalizeQuestion(question);
+  const existingIndex = profile.customAnswers.findIndex((entry) => normalizeQuestion(entry.question) === normalizedQuestion);
+
+  if (existingIndex >= 0) {
+    const existing = profile.customAnswers[existingIndex];
+    if (existing.answer.trim() === answer) {
+      return profile;
+    }
+
+    return {
+      ...profile,
+      customAnswers: profile.customAnswers.map((entry, index) =>
+        index === existingIndex
+          ? { ...entry, question, answer, tags: Array.from(new Set([...entry.tags, "learned"])) }
+          : entry
+      )
+    };
+  }
+
+  return {
+    ...profile,
+    customAnswers: [...profile.customAnswers, { question, answer, tags: ["learned"] }]
+  };
+}
+
+function cleanQuestionText(value: string): string {
+  return value
+    .replace(/\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
+}
+
+function normalizeQuestion(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/['’`´]/g, " ")
+    .replace(/[_/-]+/g, " ")
+    .replace(/[^a-z0-9? ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isPersonalQuestionText(normalized: string): boolean {
+  return /\b(first name|last name|full name|name|email|phone|telephone|address|city|country|postal|zip|linkedin|github|portfolio|website|resume|cv|cover letter|password|captcha)\b/.test(
+    normalized
+  );
+}
+
+function isIgnoredLearningInput(element: HTMLInputElement | HTMLTextAreaElement): boolean {
+  if (element instanceof HTMLTextAreaElement) {
+    return false;
+  }
+
+  const type = element.type.toLowerCase();
+  return ["button", "checkbox", "color", "date", "datetime-local", "email", "file", "hidden", "image", "month", "number", "password", "radio", "range", "reset", "search", "submit", "tel", "time", "url", "week"].includes(type);
 }
 
 async function updateAvailabilityBadge(): Promise<void> {

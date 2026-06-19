@@ -41,48 +41,46 @@ Folio is designed around a simple rule: **your application data should stay your
 - Autofill only runs after a user action.
 - Folio does not click submit buttons.
 
-The current Manifest V3 build uses broad host permissions so it can scan many application forms across the web. That is practical for the prototype, but the permission model may become more scoped as platform-specific support matures.
+The current Manifest V3 build asks for page access so Folio can detect fields on job applications, match them with your saved profile, and fill them only when you click autofill. As Folio matures, the goal is to keep that access as understandable and focused as possible while still working across many application websites.
 
-## Current Status
+## Roadmap & Progress
 
-Folio is currently an experimental personal project. It already works as a local extension prototype, but it is still being shaped.
+Folio is a personal project and still a work in progress, but the core extension is already usable locally.
 
-Good things already in place:
-
-- Popup scanning and autofill flow
-- Options/settings dashboard
-- Local JSON import/export
-- Country/city selectors
-- Resume/CV document manager
-- Field matching across common English and French labels
-- Autofill metrics
-- Chrome extension build output
-
-Still improving:
-
-- More job board/platform-specific matching
-- Better handling for complex custom dropdowns
-- More languages
-- Smaller production bundles
-- More testing on real application sites
-- Chrome Web Store packaging polish
+- [x] Popup scanning and one-click autofill flow
+- [x] Local profile manager for personal info, education, experience, skills, documents, and answers
+- [x] Resume/CV document manager with tags, preview, zoom, download, default selection, and deletion confirmation
+- [x] Resume/CV attachment during autofill when websites ask for uploads
+- [x] Local JSON import/export
+- [x] Country and city selectors
+- [x] Field matching across common English and French labels
+- [x] Custom answers that can be reused for recurring application questions
+- [x] Autofill metrics for forms filled, fields filled, and estimated time saved
+- [x] Chrome extension build output
+- [ ] Nicer UI/UX settings with hand-crafted details (working on it)
+- [ ] Auto import using your resume for the first configuration
+- [ ] Better handling for complex custom dropdowns
+- [ ] Chrome Web Store packaging polish
 
 ## Install Locally
 
-Folio is not published to the Chrome Web Store yet. To try it locally:
+Folio is not published to the Chrome Web Store yet. To install it manually, download a release build and load it in Chrome:
+
+1. Go to the [Folio releases page](https://github.com/omarbhl/Folio/releases).
+2. Download the latest release zip.
+3. Unzip it somewhere on your computer.
+4. Open `chrome://extensions` in Chrome.
+5. Enable **Developer mode**.
+6. Click **Load unpacked**.
+7. Select the unzipped extension folder. If the release contains a `dist` folder, select `dist`.
+8. Pin Folio from the extensions menu.
+
+For development builds from source:
 
 ```bash
 npm install
 npm run build
 ```
-
-Then load it in Chrome:
-
-1. Open `chrome://extensions`.
-2. Enable **Developer mode**.
-3. Click **Load unpacked**.
-4. Select the generated `dist` folder.
-5. Pin Folio from the extensions menu.
 
 ## Development
 
@@ -111,7 +109,6 @@ public          Manifest, extension icons, static assets
 - shadcn/ui + Radix primitives
 - Tailwind CSS
 - Recharts
-- `country-state-city`
 
 ## Safety Notes
 

@@ -13,7 +13,8 @@ export type ProfilePath =
   | "personal.postalCode"
   | "personal.linkedin"
   | "personal.github"
-  | "personal.portfolio";
+  | "personal.portfolio"
+  | `customAnswers.${number}`;
 
 export interface PersonalProfile {
   firstName: string;
