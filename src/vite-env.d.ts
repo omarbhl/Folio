@@ -6,6 +6,7 @@ interface ChromeTab {
 }
 
 interface ChromeRuntime {
+  id?: string;
   openOptionsPage(callback?: () => void): void;
   sendMessage(message: unknown, callback?: (response: unknown) => void): void;
   onMessage: {
@@ -23,6 +24,9 @@ interface ChromeStorageArea {
 
 interface ChromeApi {
   runtime: ChromeRuntime;
+  scripting: {
+    executeScript(details: { target: { tabId: number }; files: string[] }): Promise<unknown[]>;
+  };
   tabs: {
     query(queryInfo: Record<string, unknown>): Promise<ChromeTab[]>;
     sendMessage(tabId: number, message: unknown): Promise<unknown>;

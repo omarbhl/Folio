@@ -77,9 +77,11 @@ export interface ProfileMetrics {
 }
 
 export interface AutofillPreferences {
+  enabled: boolean;
   countryAliases: string[];
   cityAliases: string[];
   defaultResumeId: string;
+  learnedSiteHosts: string[];
 }
 
 export interface FolioProfile {

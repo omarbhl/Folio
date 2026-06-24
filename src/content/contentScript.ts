@@ -1,58 +1,56 @@
 import { detectFields, getFillableElements, getLabelText, getNearbyText } from "../shared/fieldDetection";
-import { isSafeFillMatch, matchFields } from "../shared/fieldMatching";
+import { matchFields } from "../shared/fieldMatching";
+import { isCurrentSiteBlocked } from "../shared/blockedSites";
 import { getProfile, saveProfile } from "../shared/storage";
 import type { ContentMessage, DetectedField, DetectedUploadField, FillRequestMatch, FillResult, FolioProfile } from "../shared/types";
 
 const FOLIO_FILLED_CLASS = "folio-filled";
 const FOLIO_STYLE_ID = "folio-filled-indicator-style";
-const AVAILABILITY_DEBOUNCE_MS = 500;
 const CUSTOM_ANSWER_LEARN_DEBOUNCE_MS = 900;
 const MIN_CUSTOM_ANSWER_LENGTH = 2;
 const indicatorListeners = new WeakSet<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>();
 const learningIgnoredElements = new WeakSet<Element>();
 const learningTimers = new WeakMap<Element, number>();
-let availabilityTimer: number | undefined;
 
-chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
-  if (!isContentMessage(message)) {
+if (!isCurrentSiteBlocked() && !window.__folioContentScriptLoaded) {
+  window.__folioContentScriptLoaded = true;
+  chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+    if (!isContentMessage(message)) {
+      return false;
+    }
+
+    if (message.action === "SCAN_FIELDS") {
+      sendResponse({ fields: detectFields() });
+      return false;
+    }
+
+    if (message.action === "FILL_FIELDS") {
+      sendResponse(fillFields(message.matches, message.overwriteExisting));
+      return false;
+    }
+
+    if (message.action === "SCAN_RESUME_UPLOADS") {
+      sendResponse({ fields: detectResumeUploadFields() });
+      return false;
+    }
+
+    if (message.action === "FILL_RESUME_UPLOAD") {
+      sendResponse(fillResumeUpload(message));
+      return false;
+    }
+
     return false;
+  });
+
+  window.addEventListener("input", scheduleCustomAnswerLearning, true);
+  window.addEventListener("change", scheduleCustomAnswerLearning, true);
+}
+
+declare global {
+  interface Window {
+    __folioContentScriptLoaded?: boolean;
   }
-
-  if (message.action === "SCAN_FIELDS") {
-    sendResponse({ fields: detectFields() });
-    return false;
-  }
-
-  if (message.action === "FILL_FIELDS") {
-    sendResponse(fillFields(message.matches, message.overwriteExisting));
-    return false;
-  }
-
-  if (message.action === "SCAN_RESUME_UPLOADS") {
-    sendResponse({ fields: detectResumeUploadFields() });
-    return false;
-  }
-
-  if (message.action === "FILL_RESUME_UPLOAD") {
-    sendResponse(fillResumeUpload(message));
-    return false;
-  }
-
-  return false;
-});
-
-void updateAvailabilityBadge();
-window.addEventListener("focus", scheduleAvailabilityBadgeUpdate, true);
-window.addEventListener("input", scheduleAvailabilityBadgeUpdate, true);
-window.addEventListener("change", scheduleAvailabilityBadgeUpdate, true);
-window.addEventListener("input", scheduleCustomAnswerLearning, true);
-window.addEventListener("change", scheduleCustomAnswerLearning, true);
-new MutationObserver(scheduleAvailabilityBadgeUpdate).observe(document.documentElement, {
-  childList: true,
-  subtree: true,
-  attributes: true,
-  attributeFilter: ["style", "class", "disabled", "readonly", "hidden", "aria-hidden"]
-});
+}
 
 function isContentMessage(message: unknown): message is ContentMessage {
   if (!message || typeof message !== "object" || !("action" in message)) {
@@ -95,7 +93,9 @@ function fillFields(matches: FillRequestMatch[], overwriteExisting: boolean): Fi
   restoreScroll();
   requestAnimationFrame(restoreScroll);
   setTimeout(restoreScroll, 0);
-  scheduleAvailabilityBadgeUpdate();
+  if (filledCount > 0) {
+    void rememberCurrentSiteForLearning();
+  }
   return { filledCount, skippedCount };
 }
 
@@ -215,7 +215,7 @@ function fillResumeUpload(message: Extract<ContentMessage, { action: "FILL_RESUM
   element.dispatchEvent(new Event("input", { bubbles: true }));
   element.dispatchEvent(new Event("change", { bubbles: true }));
   markElementFilled(element);
-  scheduleAvailabilityBadgeUpdate();
+  void rememberCurrentSiteForLearning();
   return { filledCount: 1, skippedCount: 0 };
 }
 
@@ -232,11 +232,6 @@ function makeUploadFile(fileName: string, mimeType: string, content: string, con
   }
 
   return new File([content], fileName, { type: mimeType || "text/plain" });
-}
-
-function scheduleAvailabilityBadgeUpdate(): void {
-  window.clearTimeout(availabilityTimer);
-  availabilityTimer = window.setTimeout(() => void updateAvailabilityBadge(), AVAILABILITY_DEBOUNCE_MS);
 }
 
 function scheduleCustomAnswerLearning(event: Event): void {
@@ -271,7 +266,7 @@ async function learnCustomAnswer(element: HTMLInputElement | HTMLTextAreaElement
   }
 
   const profile = await getProfile();
-  if (!profile || isPersonalProfileAnswer(answer, profile) || isPersonalProfileField(field, profile)) {
+  if (!profile || !profile.preferences.enabled || !canLearnOnCurrentSite(profile) || isPersonalProfileAnswer(answer, profile) || isPersonalProfileField(field, profile)) {
     return;
   }
 
@@ -382,24 +377,32 @@ function isIgnoredLearningInput(element: HTMLInputElement | HTMLTextAreaElement)
   return ["button", "checkbox", "color", "date", "datetime-local", "email", "file", "hidden", "image", "month", "number", "password", "radio", "range", "reset", "search", "submit", "tel", "time", "url", "week"].includes(type);
 }
 
-async function updateAvailabilityBadge(): Promise<void> {
+function canLearnOnCurrentSite(profile: FolioProfile): boolean {
+  return profile.preferences.learnedSiteHosts.includes(normalizeHostname(window.location.hostname));
+}
+
+async function rememberCurrentSiteForLearning(): Promise<void> {
   const profile = await getProfile();
-  if (!profile) {
-    sendAvailabilityCount(0);
+  if (!profile || !profile.preferences.enabled) {
     return;
   }
 
-  const fields = detectFields();
-  const safeMatches = matchFields(fields, profile).filter(isSafeFillMatch);
-  sendAvailabilityCount(safeMatches.length + detectResumeUploadFields().length);
+  const hostname = normalizeHostname(window.location.hostname);
+  if (!hostname || profile.preferences.learnedSiteHosts.includes(hostname)) {
+    return;
+  }
+
+  await saveProfile({
+    ...profile,
+    preferences: {
+      ...profile.preferences,
+      learnedSiteHosts: [...profile.preferences.learnedSiteHosts, hostname]
+    }
+  });
 }
 
-function sendAvailabilityCount(count: number): void {
-  try {
-    chrome.runtime.sendMessage({ action: "FOLIO_AVAILABILITY", count });
-  } catch {
-    // The badge is a best-effort hint; filling still works if the background page is unavailable.
-  }
+function normalizeHostname(hostname: string): string {
+  return hostname.toLowerCase().replace(/^www\./, "");
 }
 
 function captureScrollPositions(element?: Element): () => void {

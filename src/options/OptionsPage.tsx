@@ -96,14 +96,14 @@ const emptyAnswer: CustomAnswer = {
 type SectionId = "overview" | "personal" | "files" | "skills" | "education" | "experience" | "answers" | "data";
 
 const navItems: Array<{ id: SectionId; label: string; description: string; icon: typeof Sparkles }> = [
-  { id: "overview", label: "Overview", description: "Your profile at a glance, theme, and autofill activity.", icon: LayoutDashboard },
-  { id: "personal", label: "Personal info", description: "Core contact details Folio can match to application forms.", icon: UserRound },
-  { id: "files", label: "My files", description: "Upload, preview, edit, and manage your resume library.", icon: FileText },
+  { id: "overview", label: "Analytics", description: "Your profile at a glance, theme, and autofill activity.", icon: LayoutDashboard },
+  { id: "personal", label: "Profile", description: "Core contact details Folio can match to application forms.", icon: UserRound },
+  { id: "files", label: "Documents", description: "Upload, preview, edit, and manage your resume library.", icon: FileText },
   { id: "skills", label: "Skills", description: "Keep a reusable skill set ready for application platforms.", icon: Tags },
   { id: "education", label: "Education", description: "Add the schools and programs that shaped you.", icon: GraduationCap },
   { id: "experience", label: "Experience", description: "Add the roles you've held and what you did there.", icon: BriefcaseBusiness },
-  { id: "answers", label: "Custom answers", description: "Save go-to answers for recurring application questions.", icon: FileText },
-  { id: "data", label: "Data & privacy", description: "Import, export, and inspect the Folio profile stored in this browser.", icon: ShieldCheck }
+  { id: "answers", label: "Answers", description: "Save go-to answers for recurring application questions.", icon: FileText },
+  { id: "data", label: "Settings", description: "Import, export, and inspect the Folio profile stored in this browser.", icon: ShieldCheck }
 ];
 
 const activityChartConfig = {
@@ -221,8 +221,6 @@ export function OptionsPage() {
   const isProfileComplete = profileCompleteness >= 100;
   const savedStateLabel = isDirty ? "Unsaved changes" : "Saved locally";
   const activeItem = navItems.find((item) => item.id === activeSection) ?? navItems[0];
-  const profileJson = useMemo(() => JSON.stringify(profile, null, 2), [profile]);
-
   useEffect(() => {
     getProfile().then((storedProfile) => {
       if (storedProfile) {
@@ -464,122 +462,38 @@ export function OptionsPage() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      {/* Sidebar (desktop) */}
-      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-border/60 bg-muted/30 md:flex lg:w-60">
-        <div className="flex items-center gap-2.5 border-b border-border/60 px-4 py-4">
-          <CraneMark className="h-8 w-8 text-primary" />
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">Folio</p>
-            <p className="text-sm font-semibold leading-tight">Settings</p>
-          </div>
-        </div>
-
-        <nav className="flex-1 space-y-1 overflow-y-auto px-2.5 py-3" aria-label="Settings categories">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveSection(item.id)}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                  isActive
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                )}
-              >
-                <Icon size={16} className="shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="space-y-3 border-t border-border/60 px-3 py-3">
-          {isProfileComplete ? (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <CheckCircle2 size={14} />
-              Profile complete
+    <div className="folio-options-page">
+      <div className="settings-shell">
+        <header className="settings-topbar">
+          <div className="settings-brand">
+            <CraneMark className="brand-mark" />
+            <div>
+              <strong>Folio</strong>
+              <span>Private autofill profile</span>
             </div>
-          ) : (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Profile complete</span>
-                <span className="font-medium text-foreground">{profileCompleteness}%</span>
-              </div>
-              <Progress value={profileCompleteness} className="h-1.5" />
-            </div>
-          )}
-
-          <ToggleGroup
-            type="single"
-            value={themeMode}
-            onValueChange={(value) => void handleThemeChange(value as ThemeMode)}
-            className="grid grid-cols-3 gap-1"
-          >
-            <ToggleGroupItem value="light" aria-label="Light theme" className="h-8">
-              <Sun size={14} />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="dark" aria-label="Dark theme" className="h-8">
-              <Moon size={14} />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="auto" aria-label="Auto theme" className="h-8">
-              <Laptop size={14} />
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-      </aside>
-
-      {/* Main column */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {/* Mobile category nav */}
-        <div className="border-b border-border/60 bg-muted/30 md:hidden">
-          <div className="flex items-center gap-2.5 px-4 py-3">
-            <CraneMark className="h-6 w-6 text-primary" />
-            <p className="text-sm font-semibold">Folio settings</p>
           </div>
-          <nav className="flex gap-1.5 overflow-x-auto px-3 pb-3" aria-label="Settings categories">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeSection === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setActiveSection(item.id)}
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    isActive
-                      ? "border-transparent bg-background text-foreground shadow-sm"
-                      : "border-border/60 text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                  )}
-                >
-                  <Icon size={14} />
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
 
-        {/* Header */}
-        <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-background/80 px-4 py-4 backdrop-blur sm:px-6 lg:px-10">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">{activeItem.label}</h1>
-            <p className="text-sm text-muted-foreground">{activeItem.description}</p>
-          </div>
-          <div className="flex items-center gap-2">
+          <div className="topbar-actions">
             <Badge variant={isDirty ? "outline" : "secondary"} className="gap-1.5">
               {isDirty ? <Sparkles size={13} /> : <CheckCircle2 size={13} />}
               {savedStateLabel}
             </Badge>
+            <ToggleGroup
+              type="single"
+              value={themeMode}
+              onValueChange={(value) => void handleThemeChange(value as ThemeMode)}
+              className="theme-toggle"
+            >
+              <ToggleGroupItem value="light" aria-label="Light theme">
+                <Sun size={14} />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="dark" aria-label="Dark theme">
+                <Moon size={14} />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="auto" aria-label="Auto theme">
+                <Laptop size={14} />
+              </ToggleGroupItem>
+            </ToggleGroup>
             <Button onClick={handleSave} disabled={!isDirty}>
               <Save size={16} />
               {isDirty ? "Save changes" : "Saved"}
@@ -587,14 +501,48 @@ export function OptionsPage() {
           </div>
         </header>
 
+        <div className="settings-page-heading">
+          <div>
+            <p className="eyebrow">{activeItem.label}</p>
+            <h1>Customize once. Apply everywhere.</h1>
+            <p>{activeItem.description}</p>
+          </div>
+          <div className="progress-row">
+            <div>
+              <span>Profile completeness</span>
+              <strong>{profileCompleteness}%</strong>
+            </div>
+            <Progress value={profileCompleteness} className="h-1.5" />
+          </div>
+        </div>
+
+        <nav className="settings-tabs" aria-label="Settings categories">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeSection === item.id;
+            return (
+              <Button
+                key={item.id}
+                type="button"
+                variant="ghost"
+                onClick={() => setActiveSection(item.id)}
+                aria-current={isActive ? "page" : undefined}
+                data-state={isActive ? "on" : "off"}
+              >
+                <Icon size={15} />
+                {item.label}
+              </Button>
+            );
+          })}
+        </nav>
+
         {status && (
-          <div className="border-b border-border/60 bg-muted/30 px-4 py-2 text-sm text-muted-foreground sm:px-6 lg:px-10" role="status">
+          <div className="status" role="status">
             {status}
           </div>
         )}
 
-        {/* Content */}
-        <main className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+        <main className="settings-main">
           <div className="options-content-grid">
             {activeSection === "overview" && (
               <>
@@ -980,76 +928,88 @@ export function OptionsPage() {
             )}
 
             {activeSection === "education" && (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-                  <div>
-                    <CardTitle>Education</CardTitle>
-                    <CardDescription>Schools, degrees, and programs.</CardDescription>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setProfile((current) => ({ ...current, education: [...current.education, emptyEducation] }))}
-                  >
-                    <Plus size={16} />
-                    Add
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {profile.education.map((entry, index) => (
-                    <article key={index} className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
-                      <div className="flex items-center justify-between">
-                        <strong className="text-sm font-medium">Education {index + 1}</strong>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setProfile((current) => ({
-                              ...current,
-                              education: current.education.filter((_, entryIndex) => entryIndex !== index)
-                            }))
-                          }
-                          disabled={profile.education.length === 1}
-                        >
-                          <Trash2 size={16} />
-                          Remove
-                        </Button>
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        {(["school", "degree", "fieldOfStudy"] as Array<keyof EducationEntry>).map((key) => (
-                          <div className="space-y-1.5" key={key}>
-                            <Label htmlFor={`education-${index}-${key}`}>{key === "fieldOfStudy" ? "Field of study" : labelFromKey(key)}</Label>
-                            <Input
-                              id={`education-${index}-${key}`}
-                              value={String(entry[key])}
-                              onChange={(event) => updateEducation(index, key, event.target.value)}
+              <div className="education-layout span-columns">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+                    <div>
+                      <CardTitle>Education</CardTitle>
+                      <CardDescription>Schools, degrees, and programs.</CardDescription>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => setProfile((current) => ({ ...current, education: [...current.education, emptyEducation] }))}
+                    >
+                      <Plus size={16} />
+                      Add
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {profile.education.map((entry, index) => (
+                      <article key={index} className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+                        <div className="flex items-center justify-between">
+                          <strong className="text-sm font-medium">Education {index + 1}</strong>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setProfile((current) => ({
+                                ...current,
+                                education: current.education.filter((_, entryIndex) => entryIndex !== index)
+                              }))
+                            }
+                            disabled={profile.education.length === 1}
+                          >
+                            <Trash2 size={16} />
+                            Remove
+                          </Button>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          {(["school", "degree", "fieldOfStudy"] as Array<keyof EducationEntry>).map((key) => (
+                            <div className="space-y-1.5" key={key}>
+                              <Label htmlFor={`education-${index}-${key}`}>{key === "fieldOfStudy" ? "Field of study" : labelFromKey(key)}</Label>
+                              <Input
+                                id={`education-${index}-${key}`}
+                                value={String(entry[key])}
+                                onChange={(event) => updateEducation(index, key, event.target.value)}
+                              />
+                            </div>
+                          ))}
+                          <YearField
+                            id={`education-${index}-startDate`}
+                            label="Start date"
+                            value={entry.startDate}
+                            onChange={(value) => updateEducation(index, "startDate", value)}
+                          />
+                          <DateField
+                            id={`education-${index}-endDate`}
+                            label="End date"
+                            value={entry.endDate}
+                            onChange={(value) => updateEducation(index, "endDate", value)}
+                          />
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <Label htmlFor={`education-${index}-description`}>Description</Label>
+                            <Textarea
+                              id={`education-${index}-description`}
+                              value={entry.description}
+                              onChange={(event) => updateEducation(index, "description", event.target.value)}
                             />
                           </div>
-                        ))}
-                        <YearField
-                          id={`education-${index}-startDate`}
-                          label="Start date"
-                          value={entry.startDate}
-                          onChange={(value) => updateEducation(index, "startDate", value)}
-                        />
-                        <DateField
-                          id={`education-${index}-endDate`}
-                          label="End date"
-                          value={entry.endDate}
-                          onChange={(value) => updateEducation(index, "endDate", value)}
-                        />
-                        <div className="space-y-1.5 sm:col-span-2">
-                          <Label htmlFor={`education-${index}-description`}>Description</Label>
-                          <Textarea
-                            id={`education-${index}-description`}
-                            value={entry.description}
-                            onChange={(event) => updateEducation(index, "description", event.target.value)}
-                          />
                         </div>
-                      </div>
-                    </article>
-                  ))}
-                </CardContent>
-              </Card>
+                      </article>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <Card className="education-timeline-card">
+                  <CardHeader>
+                    <CardTitle>Timeline</CardTitle>
+                    <CardDescription>Your education history at a glance.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <EducationTimeline entries={profile.education} />
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {activeSection === "experience" && (
@@ -1169,26 +1129,43 @@ export function OptionsPage() {
             {activeSection === "data" && (
               <Card className="span-columns">
                 <CardHeader>
-                  <CardTitle>Local data</CardTitle>
-                  <CardDescription>Export, import, or reset the Folio profile stored in this browser.</CardDescription>
+                  <CardTitle>Settings</CardTitle>
+                  <CardDescription>Manage local profile data and extension preferences.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" onClick={handleExport}>
-                      <FileDown size={16} />
-                      Export JSON
-                    </Button>
-                    <Button asChild variant="outline">
-                      <label className="cursor-pointer">
-                        <Upload size={16} />
-                        Import JSON
-                        <input type="file" accept="application/json,.json" onChange={handleImport} hidden />
-                      </label>
-                    </Button>
+                <CardContent className="settings-grid">
+                  <div className="settings-panel">
+                    <div>
+                      <strong>Local data</strong>
+                      <p>Export a backup or import an existing Folio profile.</p>
+                    </div>
+                    <div className="data-actions">
+                      <Button variant="outline" onClick={handleExport}>
+                        <FileDown size={16} />
+                        Export JSON
+                      </Button>
+                      <Button asChild variant="outline">
+                        <label className="cursor-pointer">
+                          <Upload size={16} />
+                          Import JSON
+                          <input type="file" accept="application/json,.json" onChange={handleImport} hidden />
+                        </label>
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="profile-json-viewer">Profile JSON</Label>
-                    <Textarea id="profile-json-viewer" className="json-viewer font-mono" value={profileJson} readOnly aria-readonly="true" />
+
+                  <div className="settings-panel is-placeholder">
+                    <strong>Backup schedule</strong>
+                    <p>Automatic encrypted backups can live here when Folio adds sync support.</p>
+                  </div>
+
+                  <div className="settings-panel is-placeholder">
+                    <strong>Site permissions</strong>
+                    <p>Review trusted sites, learning permissions, and extension availability controls.</p>
+                  </div>
+
+                  <div className="settings-panel is-placeholder">
+                    <strong>Privacy controls</strong>
+                    <p>Future controls for clearing learned answers, resumes, and local activity counters.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1353,6 +1330,60 @@ function formatFileSize(bytes: number): string {
 
 function getDocumentTags(documents: ProfileDocument[]): string[] {
   return Array.from(new Set(documents.flatMap((document) => document.tags))).filter(Boolean).sort((a, b) => a.localeCompare(b));
+}
+
+function EducationTimeline({ entries }: { entries: EducationEntry[] }) {
+  const visibleEntries = entries.filter((entry) =>
+    [entry.school, entry.degree, entry.fieldOfStudy, entry.startDate, entry.endDate, entry.description].some((value) => value.trim().length > 0)
+  );
+
+  if (visibleEntries.length === 0) {
+    return (
+      <div className="education-timeline-empty">
+        <GraduationCap size={22} />
+        <p>Add your first school to start building the timeline.</p>
+      </div>
+    );
+  }
+
+  return (
+    <ol className="education-timeline">
+      {visibleEntries.map((entry, index) => (
+        <li key={`${entry.school}-${entry.degree}-${index}`} className="education-timeline-item">
+          <span className="education-timeline-dot" />
+          <div className="education-timeline-content">
+            <Badge variant="outline" className="education-timeline-date">
+              {formatTimelineRange(entry.startDate, entry.endDate)}
+            </Badge>
+            <strong>{entry.degree || entry.fieldOfStudy || "Education"}</strong>
+            <span>{entry.school || "School not added yet"}</span>
+            {entry.fieldOfStudy && entry.degree && <small>{entry.fieldOfStudy}</small>}
+            {entry.description && <p>{entry.description}</p>}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function formatTimelineRange(startDate: string, endDate: string): string {
+  const start = formatTimelineDate(startDate);
+  const end = formatTimelineDate(endDate);
+
+  if (start && end) {
+    return `${start} - ${end}`;
+  }
+
+  return start || end || "Dates pending";
+}
+
+function formatTimelineDate(value: string): string {
+  if (!value.trim()) {
+    return "";
+  }
+
+  const year = value.match(/\b\d{4}\b/)?.[0];
+  return year ?? value;
 }
 
 type CustomAnswerRow = CustomAnswer & { rowIndex: number };

@@ -110,7 +110,8 @@ function normalizeProfile(profile: FolioProfile): FolioProfile {
     documents: (profile.documents ?? []).map(normalizeDocument),
     preferences: {
       ...defaultProfile.preferences,
-      ...(profile.preferences ?? {})
+      ...(profile.preferences ?? {}),
+      learnedSiteHosts: Array.from(new Set(profile.preferences?.learnedSiteHosts ?? []))
     }
   };
 }

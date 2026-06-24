@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BriefcaseBusiness, ChevronRight, FileText, RefreshCw, Settings, UserCircle2, WandSparkles, Zap } from "lucide-react";
+import { Power, RefreshCw, Settings, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CraneMark } from "../shared/brand";
 import { isSafeFillMatch, matchFields } from "../shared/fieldMatching";
 import { getProfile, getThemeMode, saveProfile } from "../shared/storage";
@@ -72,6 +73,7 @@ export function Popup() {
   const [siteSeed, setSiteSeed] = useState(0);
   const [messageSeed] = useState(() => Date.now());
 
+  const isEnabled = profile?.preferences.enabled ?? true;
   const fillableMatches = useMemo(() => matches.filter(isSafeFillMatch), [matches]);
   const resumeDocuments = useMemo(
     () => (profile?.documents ?? []).filter((document) => document.type === "resume" && document.content && document.fileName),
@@ -90,7 +92,7 @@ export function Popup() {
       null,
     [filteredResumeDocuments, profile?.preferences.defaultResumeId, selectedResumeId]
   );
-  const canFillPage = fillableMatches.length > 0 || (uploadFields.length > 0 && selectedResume !== null);
+  const canFillPage = isEnabled && (fillableMatches.length > 0 || (uploadFields.length > 0 && selectedResume !== null));
   const readyTitle = scanState === "scanning" ? "Scanning page" : canFillPage ? "Ready to fill" : "Nothing to fill";
   const scanSummary =
     scanState === "scanning"
@@ -98,16 +100,6 @@ export function Popup() {
       : detectedFields.length > 0
         ? `Detected ${detectedFields.length} fields on this page`
         : status || pickMessage(EMPTY_MESSAGES, siteSeed + messageSeed);
-  const quickLinks = useMemo(
-    () => [
-      { label: "Personal Information", meta: "Updated locally", icon: UserCircle2 },
-      { label: "Work Experience", meta: `${profile?.experience.length ?? 0} item${(profile?.experience.length ?? 0) === 1 ? "" : "s"}`, icon: BriefcaseBusiness },
-      { label: "Documents", meta: `${resumeDocuments.length} file${resumeDocuments.length === 1 ? "" : "s"}`, icon: FileText },
-      { label: "Answers", meta: `${profile?.customAnswers.filter((answer) => answer.answer.trim()).length ?? 0} saved answers`, icon: WandSparkles }
-    ],
-    [profile?.customAnswers, profile?.experience.length, resumeDocuments.length]
-  );
-
   useEffect(() => {
     let removeThemeListener: () => void = () => undefined;
     getThemeMode().then((mode) => {
@@ -139,7 +131,12 @@ export function Popup() {
   }, [filteredResumeDocuments, profile?.preferences.defaultResumeId, selectedResumeId]);
 
   const scanPage = useCallback(async () => {
-    if (!profile) {
+    if (!profile || !profile.preferences.enabled) {
+      setDetectedFields([]);
+      setUploadFields([]);
+      setMatches([]);
+      setScanState("ready");
+      setStatus("Folio is off.");
       return;
     }
 
@@ -148,8 +145,8 @@ export function Popup() {
 
     try {
       const [response, uploadResponse] = (await Promise.all([
-        sendTabMessage({ action: "SCAN_FIELDS" }),
-        sendTabMessage({ action: "SCAN_RESUME_UPLOADS" })
+        sendTabMessage({ action: "SCAN_FIELDS" }, true),
+        sendTabMessage({ action: "SCAN_RESUME_UPLOADS" }, true)
       ])) as [{ fields?: DetectedField[] }, { fields?: DetectedUploadField[] }];
       const fields = response.fields ?? [];
       const uploads = uploadResponse.fields ?? [];
@@ -170,12 +167,17 @@ export function Popup() {
   }, [profile, siteSeed]);
 
   useEffect(() => {
-    if (!loadingProfile && profile && scanState === "idle") {
+    if (!loadingProfile && profile && profile.preferences.enabled && scanState === "idle") {
       void scanPage();
     }
   }, [loadingProfile, profile, scanPage, scanState]);
 
   async function fillFields() {
+    if (!profile?.preferences.enabled) {
+      setStatus("Folio is off.");
+      return;
+    }
+
     const safeMatches = fillableMatches.map((match) => ({
       fieldIndex: match.field.index,
       value: match.value,
@@ -194,7 +196,7 @@ export function Popup() {
               action: "FILL_FIELDS",
               matches: safeMatches,
               overwriteExisting
-            })) as FillResult)
+            }, true)) as FillResult)
           : { filledCount: 0, skippedCount: 0 };
       const resumeResult =
         selectedResume && uploadFields.length > 0
@@ -202,6 +204,7 @@ export function Popup() {
           : { filledCount: 0, skippedCount: 0 };
       const totalFilled = fieldResult.filledCount + resumeResult.filledCount;
       if (totalFilled > 0 && profile) {
+        const host = await getActiveTabHostname();
         const nextProfile: FolioProfile = {
           ...profile,
           metrics: {
@@ -209,6 +212,10 @@ export function Popup() {
             totalFormsFilled: profile.metrics.totalFormsFilled + 1,
             totalFieldsFilled: profile.metrics.totalFieldsFilled + totalFilled,
             lastAutofillAt: new Date().toISOString()
+          },
+          preferences: {
+            ...profile.preferences,
+            learnedSiteHosts: host ? Array.from(new Set([...profile.preferences.learnedSiteHosts, host])) : profile.preferences.learnedSiteHosts
           }
         };
         setProfile(nextProfile);
@@ -229,7 +236,35 @@ export function Popup() {
       mimeType: resume.mimeType,
       content: resume.content,
       contentKind: resume.contentKind
-    })) as FillResult;
+    }, true)) as FillResult;
+  }
+
+  async function toggleExtension(enabled: boolean) {
+    if (!profile) {
+      return;
+    }
+
+    const nextProfile: FolioProfile = {
+      ...profile,
+      preferences: {
+        ...profile.preferences,
+        enabled
+      }
+    };
+    setProfile(nextProfile);
+    await saveProfile(nextProfile);
+
+    if (!enabled) {
+      setDetectedFields([]);
+      setUploadFields([]);
+      setMatches([]);
+      setScanState("ready");
+      setStatus("Folio is off.");
+      return;
+    }
+
+    setScanState("idle");
+    setStatus("");
   }
 
   function openOptions() {
@@ -288,24 +323,55 @@ export function Popup() {
           <h1>Folio</h1>
         </div>
         <div className="popup-header-actions">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-xs"
             className="popup-icon-button"
             onClick={() => void refreshPageScan()}
-            disabled={scanState === "scanning"}
+            disabled={!isEnabled || scanState === "scanning"}
             aria-label="Refresh scan"
             title="Refresh scan"
           >
-            <RefreshCw size={17} className={scanState === "scanning" ? "popup-refresh-icon is-spinning" : "popup-refresh-icon"} />
-          </button>
-          <button type="button" className="popup-icon-button" onClick={openOptions} aria-label="Open settings" title="Open settings">
-            <Settings size={18} />
-          </button>
+            <RefreshCw size={14} className={scanState === "scanning" ? "popup-refresh-icon is-spinning" : "popup-refresh-icon"} />
+          </Button>
+          <Button type="button" variant="ghost" size="icon-xs" className="popup-icon-button" onClick={openOptions} aria-label="Open settings" title="Open settings">
+            <Settings size={15} />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className={isEnabled ? "popup-icon-button popup-power-button is-on" : "popup-icon-button popup-power-button is-off"}
+            onClick={() => void toggleExtension(!isEnabled)}
+            aria-label={isEnabled ? "Turn Folio off" : "Turn Folio on"}
+            title={isEnabled ? "Turn Folio off" : "Turn Folio on"}
+          >
+            <Power size={14} />
+          </Button>
         </div>
       </header>
 
+      {!isEnabled ? (
+        <div className="popup-off-state">
+          <div className="popup-off-icon">
+            <Power size={19} />
+          </div>
+          <div>
+            <strong>Folio is off</strong>
+            <p>Turn it on when you want Folio to scan this page and fill forms only when you ask.</p>
+          </div>
+          <Button type="button" size="sm" className="popup-off-button" onClick={() => void toggleExtension(true)}>
+            <Power size={14} />
+            Turn Folio on
+          </Button>
+        </div>
+      ) : (
+        <>
+
+      <div className={canFillPage ? "popup-fill-state" : "popup-fill-state is-empty"}>
       <div className="popup-status">
-        <span className={canFillPage ? "status-dot ready" : "status-dot"} />
+        <span className={isEnabled && canFillPage ? "status-dot ready" : "status-dot"} />
         <strong>{readyTitle}</strong>
       </div>
       <p className="popup-description">
@@ -326,33 +392,33 @@ export function Popup() {
               </div>
               {resumeTags.length > 0 && (
                 <div className="resume-tag-filter" aria-label="Filter resumes by tag">
-                  <button type="button" className={!resumeTagFilter ? "is-active" : ""} onClick={() => setResumeTagFilter("")}>
+                  <Button type="button" variant="outline" size="xs" className={!resumeTagFilter ? "is-active" : ""} onClick={() => setResumeTagFilter("")}>
                     All
-                  </button>
+                  </Button>
                   {resumeTags.map((tag) => (
-                    <button key={tag} type="button" className={resumeTagFilter === tag ? "is-active" : ""} onClick={() => setResumeTagFilter(tag)}>
+                    <Button key={tag} type="button" variant="outline" size="xs" className={resumeTagFilter === tag ? "is-active" : ""} onClick={() => setResumeTagFilter(tag)}>
                       {tag}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
               <div className="resume-upload-controls">
-                <select
-                  id="resume-upload-select"
-                  value={selectedResume?.id ?? ""}
-                  onChange={(event) => setSelectedResumeId(event.target.value)}
-                  disabled={filteredResumeDocuments.length === 0}
-                >
-                  {filteredResumeDocuments.length === 0 ? (
-                    <option value="">No saved resumes</option>
-                  ) : (
-                    filteredResumeDocuments.map((document) => (
-                      <option key={document.id} value={document.id}>
-                        {getResumeLabel(document)}
-                      </option>
-                    ))
+                <Select value={selectedResume?.id} onValueChange={setSelectedResumeId} disabled={filteredResumeDocuments.length === 0}>
+                  <SelectTrigger id="resume-upload-select" size="sm" className="resume-select-trigger">
+                    <SelectValue placeholder="No saved resumes" />
+                  </SelectTrigger>
+                  {filteredResumeDocuments.length > 0 && (
+                    <SelectContent className="resume-select-content">
+                      <SelectGroup>
+                        {filteredResumeDocuments.map((document) => (
+                          <SelectItem key={document.id} value={document.id}>
+                            {getResumeLabel(document)}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
                   )}
-                </select>
+                </Select>
               </div>
             </div>
           )}
@@ -365,33 +431,25 @@ export function Popup() {
               <span>{pickMessage(FILL_BUTTON_MESSAGES, messageSeed)}</span>
             </Button>
           </div>
-
-      <nav className="popup-menu" aria-label="Folio profile shortcuts">
-        {quickLinks.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button key={item.label} type="button" className="popup-menu-row" onClick={openOptions}>
-              <span className="popup-menu-icon">
-                <Icon size={18} />
-              </span>
-              <span>
-                <strong>{item.label}</strong>
-                <small>{item.meta}</small>
-              </span>
-              <ChevronRight size={18} />
-            </button>
-          );
-        })}
-      </nav>
+      </div>
+        </>
+      )}
       </section>
     </main>
   );
 }
 
-async function sendTabMessage(message: unknown): Promise<unknown> {
+async function sendTabMessage(message: unknown, injectContentScript = false): Promise<unknown> {
   const tab = await getActiveTab();
   if (!tab?.id) {
     throw new Error("No active tab found.");
+  }
+
+  if (injectContentScript) {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content/contentScript.js"]
+    });
   }
 
   return chrome.tabs.sendMessage(tab.id, message);
@@ -407,6 +465,19 @@ function getSiteSeed(url: string): number {
     return Array.from(new URL(url).hostname).reduce((total, character) => total + character.charCodeAt(0), 0);
   } catch {
     return Date.now();
+  }
+}
+
+async function getActiveTabHostname(): Promise<string> {
+  const tab = await getActiveTab();
+  if (!tab.url) {
+    return "";
+  }
+
+  try {
+    return new URL(tab.url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return "";
   }
 }
 

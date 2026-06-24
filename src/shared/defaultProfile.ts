@@ -64,8 +64,10 @@ export const defaultProfile: FolioProfile = {
     lastAutofillAt: ""
   },
   preferences: {
+    enabled: true,
     countryAliases: [],
     cityAliases: [],
-    defaultResumeId: ""
+    defaultResumeId: "",
+    learnedSiteHosts: []
   }
 };
