@@ -957,100 +957,8 @@ button.education-timeline-content:hover {
   gap: 18px;
 }
 
-.experience-list {
-  display: grid;
-  gap: 10px;
-  position: relative;
-}
-
-.experience-list::before {
-  background: linear-gradient(180deg, rgba(86, 123, 255, 0.5), rgba(142, 96, 255, 0.08));
-  border-radius: 999px;
-  content: "";
-  inset: 20px auto 20px 9px;
-  position: absolute;
-  width: 2px;
-}
-
-.experience-list-item {
-  align-items: center;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 14px;
-  color: var(--foreground);
-  display: grid;
-  gap: 12px;
-  grid-template-columns: 10px 54px minmax(0, 1fr) auto;
-  min-height: 92px;
-  padding: 12px 12px 12px 0;
-  position: relative;
-  text-align: left;
-}
-
-.experience-list-item:hover {
-  background: var(--folio-soft-surface);
-  border-color: var(--border);
-}
-
-.experience-list-item.is-selected {
-  background: rgba(86, 123, 255, 0.08);
-  border-color: rgba(86, 123, 255, 0.42);
-  box-shadow: 0 0 0 1px rgba(86, 123, 255, 0.08) inset;
-}
-
-.experience-list-dot {
-  background: var(--primary);
-  border: 2px solid var(--card);
-  border-radius: 999px;
-  box-shadow: 0 0 0 2px rgba(86, 123, 255, 0.25);
-  height: 12px;
-  position: relative;
-  width: 12px;
-  z-index: 1;
-}
-
-.experience-list-item.is-selected .experience-list-dot,
 .experience-current-badge {
   background: #10d6b0;
-}
-
-.experience-avatar {
-  align-items: center;
-  background: linear-gradient(135deg, rgba(86, 123, 255, 0.18), rgba(142, 96, 255, 0.12));
-  border: 1px solid rgba(86, 123, 255, 0.16);
-  border-radius: 12px;
-  color: var(--primary);
-  display: inline-flex;
-  font-size: 16px;
-  font-weight: 900;
-  height: 54px;
-  justify-content: center;
-  letter-spacing: 0;
-  width: 54px;
-}
-
-.experience-list-copy {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.experience-list-copy strong,
-.experience-list-copy small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.experience-list-copy strong {
-  color: var(--card-foreground);
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-.experience-list-copy small {
-  color: var(--muted-foreground);
-  font-size: 12px;
 }
 
 .experience-current-badge {
@@ -1843,29 +1751,6 @@ button.education-timeline-content:hover {
   .experience-form-grid,
   .files-layout {
     grid-template-columns: 1fr;
-  }
-
-  .experience-list::before {
-    display: none;
-  }
-
-  .experience-list-item {
-    grid-template-columns: 46px minmax(0, 1fr);
-    padding: 12px;
-  }
-
-  .experience-list-dot {
-    display: none;
-  }
-
-  .experience-avatar {
-    height: 46px;
-    width: 46px;
-  }
-
-  .experience-current-badge {
-    grid-column: 2;
-    justify-self: start;
   }
 
   .education-editor-actions,

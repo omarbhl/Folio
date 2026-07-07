@@ -1297,28 +1297,27 @@ export function OptionsPage() {
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    <div className="experience-list" role="list">
+                    <ol className="education-timeline experience-timeline">
                       {profile.experience.map((entry, index) => {
                         const isSelected = index === selectedExperienceIndex;
                         return (
-                          <button
-                            type="button"
+                          <li
                             key={`experience-${index}`}
-                            className={isSelected ? "experience-list-item is-selected" : "experience-list-item"}
-                            onClick={() => setSelectedExperienceIndex(index)}
+                            className={isSelected ? "education-timeline-item is-selected" : "education-timeline-item"}
                           >
-                            <span className="experience-list-dot" />
-                            <span className="experience-avatar">{getExperienceInitials(entry)}</span>
-                            <span className="experience-list-copy">
+                            <span className="education-timeline-dot" />
+                            <button type="button" className="education-timeline-content" onClick={() => setSelectedExperienceIndex(index)}>
+                              <Badge variant="outline" className="education-timeline-date">
+                                {formatExperienceRange(entry)}
+                              </Badge>
                               <strong>{entry.title || "Untitled role"}</strong>
-                              <small>{entry.company || "Company not set"}</small>
-                              <small>{formatExperienceRange(entry)}</small>
-                            </span>
-                            {entry.current && <Badge className="experience-current-badge">Current</Badge>}
-                          </button>
+                              <span>{entry.company || "Company not set"}</span>
+                              {entry.location && <small>{entry.location}</small>}
+                            </button>
+                          </li>
                         );
                       })}
-                    </div>
+                    </ol>
                     <div className="experience-tip">
                       <Sparkles size={15} />
                       <p>List your most relevant experience first. Focus on impact, not just duties.</p>
@@ -1505,20 +1504,6 @@ function getSavedEducation(snapshot: string, index: number): EducationEntry | nu
   } catch {
     return null;
   }
-}
-
-function getExperienceInitials(entry: ExperienceEntry): string {
-  const source = entry.company || entry.title || "Experience";
-  const words = source
-    .split(/\s+/)
-    .map((word) => word.replace(/[^a-z0-9]/gi, ""))
-    .filter(Boolean);
-
-  if (words.length === 0) {
-    return "EX";
-  }
-
-  return words.slice(0, 2).map((word) => word[0]).join("").toUpperCase();
 }
 
 function formatExperienceRange(entry: ExperienceEntry): string {
