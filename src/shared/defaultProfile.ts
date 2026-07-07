@@ -1,6 +1,16 @@
 import type { FolioProfile } from "./types";
 
+export const APP_VERSION = "1.0.1";
+export const PROFILE_VERSION = 2;
+const createdAt = new Date().toISOString();
+
 export const defaultProfile: FolioProfile = {
+  metadata: {
+    appVersion: APP_VERSION,
+    profileVersion: PROFILE_VERSION,
+    createdAt,
+    updatedAt: createdAt
+  },
   personal: {
     firstName: "",
     lastName: "",
@@ -49,25 +59,21 @@ export const defaultProfile: FolioProfile = {
       content: "",
       contentKind: "text",
       createdAt: "",
-      updatedAt: ""
+      updatedAt: "",
+      usageCount: 0,
+      lastUsedAt: ""
     }
-  ],
-  customAnswers: [
-    { question: "Why do you want to work here?", answer: "", tags: ["motivation"] },
-    { question: "Tell us about yourself.", answer: "", tags: ["intro"] },
-    { question: "What is your notice period?", answer: "", tags: ["availability"] },
-    { question: "What are your salary expectations?", answer: "", tags: ["compensation"] }
   ],
   metrics: {
     totalFormsFilled: 0,
     totalFieldsFilled: 0,
-    lastAutofillAt: ""
+    lastAutofillAt: "",
+    activityLog: []
   },
   preferences: {
     enabled: true,
     countryAliases: [],
     cityAliases: [],
-    defaultResumeId: "",
-    learnedSiteHosts: []
+    defaultResumeId: ""
   }
 };

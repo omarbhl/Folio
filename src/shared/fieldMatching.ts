@@ -33,11 +33,6 @@ export function isSafeFillMatch(match: FieldMatch): boolean {
 }
 
 export function getProfileValue(profile: FolioProfile, path: ProfilePath): string {
-  if (path.startsWith("customAnswers.")) {
-    const index = Number(path.split(".")[1]);
-    return Number.isInteger(index) ? profile.customAnswers[index]?.answer ?? "" : "";
-  }
-
   const [, key] = path.split(".") as ["personal", keyof FolioProfile["personal"]];
   return profile.personal[key] ?? "";
 }
@@ -74,19 +69,6 @@ function matchField(field: DetectedField, profile: FolioProfile): FieldMatch | n
     }
   }
 
-  profile.customAnswers.forEach((answer, index) => {
-    const confidence = getCustomAnswerConfidence(answer.question, {
-      highSignal,
-      placeholder,
-      nearby,
-      signature
-    });
-
-    if (confidence > 0) {
-      candidates.push(makeMatch(field, `customAnswers.${index}` as ProfilePath, profile, confidence, "saved custom answer"));
-    }
-  });
-
   const best = candidates
     .filter((candidate) => candidate.value.trim().length > 0)
     .sort((a, b) => b.confidence - a.confidence)[0];
@@ -120,61 +102,6 @@ function normalize(value: string): string {
     .replace(/[_/-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function getCustomAnswerConfidence(
-  question: string,
-  fieldText: { highSignal: string; placeholder: string; nearby: string; signature: string }
-): number {
-  const normalizedQuestion = normalize(question);
-  if (!normalizedQuestion || normalizedQuestion.length < 8) {
-    return 0;
-  }
-
-  const highSignalTargets = [fieldText.highSignal, fieldText.placeholder].filter(Boolean);
-  for (const target of highSignalTargets) {
-    if (target === normalizedQuestion) {
-      return 0.97;
-    }
-
-    if (containsTerm(target, normalizedQuestion) || containsTerm(normalizedQuestion, target)) {
-      return 0.9;
-    }
-  }
-
-  const contextTargets = [fieldText.nearby, fieldText.signature].filter(Boolean);
-  for (const target of contextTargets) {
-    if (target === normalizedQuestion) {
-      return 0.88;
-    }
-
-    if (containsTerm(target, normalizedQuestion)) {
-      return 0.82;
-    }
-
-    if (getTokenSimilarity(normalizedQuestion, target) >= 0.78) {
-      return 0.76;
-    }
-  }
-
-  return 0;
-}
-
-function getTokenSimilarity(a: string, b: string): number {
-  const aTokens = new Set(a.split(" ").filter((token) => token.length > 2));
-  const bTokens = new Set(b.split(" ").filter((token) => token.length > 2));
-  if (aTokens.size === 0 || bTokens.size === 0) {
-    return 0;
-  }
-
-  let shared = 0;
-  for (const token of aTokens) {
-    if (bTokens.has(token)) {
-      shared += 1;
-    }
-  }
-
-  return shared / Math.max(aTokens.size, bTokens.size);
 }
 
 function containsTerm(value: string, term: string): boolean {

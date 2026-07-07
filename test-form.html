@@ -6,59 +6,134 @@
     <title>Folio Extension Test Form</title>
     <style>
       :root {
-        color-scheme: light;
+        color-scheme: dark;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         line-height: 1.5;
       }
 
+      * {
+        box-sizing: border-box;
+      }
+
       body {
-        background: #f6f8fc;
-        color: #141821;
+        background:
+          radial-gradient(circle at 15% 0%, rgba(86, 123, 255, 0.2), transparent 28%),
+          radial-gradient(circle at 92% 12%, rgba(142, 96, 255, 0.14), transparent 24%),
+          #070b16;
+        color: #f7f9ff;
         margin: 0;
-        padding: 32px;
-      }
-
-      main {
-        background: #ffffff;
-        border: 1px solid #d9e0ec;
-        border-radius: 18px;
-        box-shadow: 0 18px 60px rgba(20, 24, 33, 0.08);
-        margin: 0 auto;
-        max-width: 860px;
-        overflow: hidden;
-      }
-
-      header,
-      form {
+        min-height: 100vh;
         padding: 28px;
       }
 
-      header {
-        border-bottom: 1px solid #e7ecf5;
+      main {
+        display: grid;
+        gap: 18px;
+        margin: 0 auto;
+        max-width: 1120px;
       }
 
-      h1 {
-        font-size: 28px;
+      header,
+      section,
+      form {
+        background: rgba(9, 14, 27, 0.92);
+        border: 1px solid rgba(138, 157, 255, 0.18);
+        border-radius: 18px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+      }
+
+      header {
+        align-items: center;
+        display: flex;
+        gap: 18px;
+        justify-content: space-between;
+        padding: 24px;
+      }
+
+      h1,
+      h2 {
         line-height: 1.1;
         margin: 0;
       }
 
+      h1 {
+        font-size: 32px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+
       p {
-        color: #626d7f;
+        color: rgba(236, 241, 255, 0.68);
         margin: 8px 0 0;
+      }
+
+      code {
+        background: rgba(86, 123, 255, 0.12);
+        border: 1px solid rgba(86, 123, 255, 0.22);
+        border-radius: 7px;
+        color: #9db7ff;
+        padding: 2px 6px;
+      }
+
+      .status-pill {
+        align-items: center;
+        background: rgba(47, 210, 123, 0.09);
+        border: 1px solid rgba(47, 210, 123, 0.22);
+        border-radius: 999px;
+        color: #9cf2bd;
+        display: inline-flex;
+        font-size: 13px;
+        font-weight: 800;
+        gap: 8px;
+        padding: 8px 12px;
+        white-space: nowrap;
+      }
+
+      .status-pill::before {
+        background: #2fd27b;
+        border-radius: 999px;
+        box-shadow: 0 0 12px rgba(47, 210, 123, 0.8);
+        content: "";
+        height: 8px;
+        width: 8px;
+      }
+
+      .layout {
+        align-items: start;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: minmax(0, 1fr) 320px;
+      }
+
+      form {
+        padding: 24px;
+      }
+
+      aside {
+        display: grid;
+        gap: 18px;
+        position: sticky;
+        top: 18px;
+      }
+
+      section {
+        padding: 18px;
       }
 
       fieldset {
         border: 0;
         display: grid;
         gap: 16px;
-        margin: 0 0 28px;
+        margin: 0 0 30px;
         padding: 0;
       }
 
       legend {
+        color: #ffffff;
         font-size: 16px;
-        font-weight: 800;
+        font-weight: 850;
         margin-bottom: 12px;
       }
 
@@ -68,25 +143,57 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      label {
+      label,
+      .field {
         display: grid;
-        gap: 6px;
+        gap: 7px;
         font-size: 13px;
+        font-weight: 760;
+      }
+
+      .hint {
+        color: rgba(236, 241, 255, 0.52);
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .controlled-status {
+        color: #ffb86b;
+        font-size: 12px;
         font-weight: 700;
+      }
+
+      .controlled-status.is-filled {
+        color: #9cf2bd;
       }
 
       input,
       textarea,
       select {
-        border: 1px solid #ccd5e3;
+        background: rgba(3, 7, 18, 0.8);
+        border: 1px solid rgba(138, 157, 255, 0.24);
         border-radius: 10px;
+        color: #f7f9ff;
         font: inherit;
         min-height: 42px;
+        outline: none;
         padding: 9px 11px;
       }
 
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-color: rgba(115, 160, 255, 0.78);
+        box-shadow: 0 0 0 3px rgba(86, 123, 255, 0.18);
+      }
+
+      input::placeholder,
+      textarea::placeholder {
+        color: rgba(236, 241, 255, 0.34);
+      }
+
       textarea {
-        min-height: 110px;
+        min-height: 112px;
         resize: vertical;
       }
 
@@ -94,33 +201,98 @@
         grid-column: 1 / -1;
       }
 
+      .split {
+        display: grid;
+        gap: 10px;
+      }
+
+      .dynamic-slot {
+        display: grid;
+        gap: 16px;
+      }
+
       .actions {
         align-items: center;
+        border-top: 1px solid rgba(236, 241, 255, 0.08);
         display: flex;
+        flex-wrap: wrap;
         gap: 12px;
+        padding-top: 18px;
       }
 
       button {
-        background: #1f5fbf;
-        border: 0;
+        background: linear-gradient(135deg, #6d36ff, #2f78ff);
+        border: 1px solid rgba(138, 157, 255, 0.4);
         border-radius: 10px;
-        color: white;
+        color: #ffffff;
         cursor: pointer;
         font: inherit;
-        font-weight: 800;
-        padding: 10px 14px;
+        font-weight: 850;
+        min-height: 40px;
+        padding: 9px 14px;
       }
 
-      output {
-        color: #626d7f;
+      button.secondary {
+        background: rgba(255, 255, 255, 0.045);
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+
+      output,
+      .log {
+        color: rgba(236, 241, 255, 0.62);
         font-size: 13px;
       }
 
-      @media (max-width: 720px) {
+      .log {
+        background: rgba(3, 7, 18, 0.72);
+        border: 1px solid rgba(236, 241, 255, 0.08);
+        border-radius: 12px;
+        display: grid;
+        gap: 6px;
+        max-height: 320px;
+        overflow: auto;
+        padding: 12px;
+      }
+
+      .log div {
+        border-bottom: 1px solid rgba(236, 241, 255, 0.06);
+        padding-bottom: 6px;
+      }
+
+      .checklist {
+        display: grid;
+        gap: 9px;
+        list-style: none;
+        margin: 12px 0 0;
+        padding: 0;
+      }
+
+      .checklist li {
+        color: rgba(236, 241, 255, 0.68);
+        font-size: 13px;
+      }
+
+      @media (max-width: 900px) {
         body {
           padding: 14px;
         }
 
+        header,
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        header {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        aside {
+          position: static;
+        }
+      }
+
+      @media (max-width: 680px) {
         .grid {
           grid-template-columns: 1fr;
         }
@@ -130,197 +302,260 @@
   <body>
     <main>
       <header>
-        <h1>Folio Extension Test Form</h1>
-        <p>Use this page to test scanning, matching, preserving existing values, and filling common application fields.</p>
+        <div>
+          <h1>Folio Extension Test Form</h1>
+          <p>Use this page to test popup scanning, autofill, resume upload, controlled inputs, and dynamic fields.</p>
+        </div>
+        <span class="status-pill">Local test page</span>
       </header>
 
-      <form id="application-form">
-        <fieldset>
-          <legend>Contact</legend>
-          <div class="grid">
-            <label>
-              First name
-              <input name="first_name" id="first-name" autocomplete="given-name" placeholder="Ada" />
-            </label>
-            <label>
-              Last name
-              <input name="last_name" id="last-name" autocomplete="family-name" placeholder="Lovelace" />
-            </label>
-            <label class="wide">
-              Full legal name
-              <input name="full_name" id="full-name" autocomplete="name" placeholder="Ada Lovelace" />
-            </label>
-            <label>
-              Email address
-              <input type="email" name="email" id="email" autocomplete="email" placeholder="ada@example.com" />
-            </label>
-            <label>
-              Phone number
-              <input type="tel" name="phone" id="phone" autocomplete="tel" placeholder="+1 555 0100" />
-            </label>
-            <label class="wide">
-              Street address
-              <input name="address" id="address" autocomplete="street-address" placeholder="123 Main Street" />
-            </label>
-            <label>
-              City
-              <select name="city" id="city" autocomplete="address-level2">
-                <option value="">Choose a city</option>
-                <option value="nyc">New York City</option>
-                <option value="sf">San Francisco</option>
-                <option value="toronto">Toronto</option>
-                <option value="casablanca">Casablanca</option>
-                <option value="london">London</option>
-              </select>
-            </label>
-            <label>
-              Country
-              <select name="country" id="country" autocomplete="country-name">
-                <option value="">Choose a country</option>
-                <option value="US">United States</option>
-                <option value="CA">Canada</option>
-                <option value="MA">Morocco</option>
-                <option value="GB">United Kingdom</option>
-                <option value="FR">France</option>
-              </select>
-            </label>
-            <label>
-              Postal code
-              <input name="postal_code" id="postal-code" autocomplete="postal-code" />
-            </label>
-            <label>
-              Portfolio
-              <input type="url" name="portfolio_url" id="portfolio" placeholder="https://example.com" />
-            </label>
-            <label>
-              LinkedIn profile
-              <input type="url" name="linkedin" id="linkedin" placeholder="https://linkedin.com/in/example" />
-            </label>
-            <label>
-              GitHub profile
-              <input type="url" name="github" id="github" placeholder="https://github.com/example" />
-            </label>
-          </div>
-        </fieldset>
+      <div class="layout">
+        <form id="application-form">
+          <fieldset>
+            <legend>Contact autofill</legend>
+            <div class="grid">
+              <label>
+                First name
+                <input name="first_name" id="first-name" autocomplete="given-name" placeholder="Ada" />
+              </label>
+              <label>
+                Last name
+                <input name="last_name" id="last-name" autocomplete="family-name" placeholder="Lovelace" />
+              </label>
+              <label class="wide">
+                Full legal name
+                <input name="full_name" id="full-name" autocomplete="name" placeholder="Ada Lovelace" />
+              </label>
+              <label>
+                Email address
+                <input type="email" name="email" id="email" autocomplete="email" placeholder="ada@example.com" />
+              </label>
+              <label>
+                Controlled email validation
+                <span class="hint">This simulates React-style forms that only trust input events.</span>
+                <input type="email" name="controlled_email" id="controlled-email" autocomplete="email" placeholder="ada@example.com" />
+                <span class="controlled-status" id="controlled-email-status">App state: empty</span>
+              </label>
+              <label>
+                Phone number
+                <input type="tel" name="phone" id="phone" autocomplete="tel" placeholder="+1 555 0100" />
+              </label>
+              <label class="wide">
+                Street address
+                <input name="address" id="address" autocomplete="street-address" placeholder="123 Main Street" />
+              </label>
+              <label>
+                City
+                <select name="city" id="city" autocomplete="address-level2">
+                  <option value="">Choose a city</option>
+                  <option value="nyc">New York City</option>
+                  <option value="sf">San Francisco</option>
+                  <option value="toronto">Toronto</option>
+                  <option value="casablanca">Casablanca</option>
+                  <option value="london">London</option>
+                </select>
+              </label>
+              <label>
+                Country
+                <select name="country" id="country" autocomplete="country-name">
+                  <option value="">Choose a country</option>
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                  <option value="MA">Morocco</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="FR">France</option>
+                </select>
+              </label>
+              <label>
+                Postal code
+                <input name="postal_code" id="postal-code" autocomplete="postal-code" />
+              </label>
+              <label>
+                Portfolio
+                <input type="url" name="portfolio_url" id="portfolio" placeholder="https://example.com" />
+              </label>
+              <label>
+                LinkedIn profile
+                <input type="url" name="linkedin" id="linkedin" placeholder="https://linkedin.com/in/example" />
+              </label>
+              <label>
+                GitHub profile
+                <input type="url" name="github" id="github" placeholder="https://github.com/example" />
+              </label>
+            </div>
+          </fieldset>
 
-        <fieldset>
-          <legend>Contact en français</legend>
-          <div class="grid">
-            <label>
-              Prénom
-              <input name="fr_prenom" id="fr-prenom" placeholder="Ada" />
-            </label>
-            <label>
-              Nom de famille
-              <input name="fr_nom" id="fr-nom" placeholder="Lovelace" />
-            </label>
-            <label class="wide">
-              Nom complet
-              <input name="fr_nom_complet" id="fr-nom-complet" placeholder="Ada Lovelace" />
-            </label>
-            <label>
-              Adresse e-mail
-              <input type="email" name="fr_email" id="fr-email" placeholder="ada@example.com" />
-            </label>
-            <label>
-              Numéro de téléphone
-              <input type="tel" name="fr_telephone" id="fr-telephone" placeholder="+1 555 0100" />
-            </label>
-            <label class="wide">
-              Adresse postale
-              <input name="fr_adresse" id="fr-adresse" placeholder="123 Main Street" />
-            </label>
-            <label>
-              Ville
-              <select name="fr_ville" id="fr-ville">
-                <option value="">Choisir une ville</option>
-                <option value="nyc">New York City</option>
-                <option value="sf">San Francisco</option>
-                <option value="toronto">Toronto</option>
-                <option value="casablanca">Casablanca</option>
-                <option value="london">London</option>
-              </select>
-            </label>
-            <label>
-              Pays
-              <select name="fr_pays" id="fr-pays">
-                <option value="">Choisir un pays</option>
-                <option value="US">United States</option>
-                <option value="CA">Canada</option>
-                <option value="MA">Morocco</option>
-                <option value="GB">United Kingdom</option>
-                <option value="FR">France</option>
-              </select>
-            </label>
-            <label>
-              Code postal
-              <input name="fr_code_postal" id="fr-code-postal" />
-            </label>
-            <label>
-              Site web
-              <input type="url" name="fr_site_web" id="fr-site-web" placeholder="https://example.com" />
-            </label>
-            <label>
-              Profil LinkedIn
-              <input type="url" name="fr_linkedin" id="fr-linkedin" placeholder="https://linkedin.com/in/example" />
-            </label>
-            <label>
-              Profil GitHub
-              <input type="url" name="fr_github" id="fr-github" placeholder="https://github.com/example" />
-            </label>
-          </div>
-        </fieldset>
+          <fieldset>
+            <legend>Question fields</legend>
+            <div class="grid">
+              <label class="wide">
+                Why are you interested in this role?
+                <span class="hint">Type an answer manually. Folio should show an F chip on the input after a short pause.</span>
+                <textarea name="role_interest" id="role-interest" placeholder="I am excited because..."></textarea>
+              </label>
+              <label class="wide">
+                What makes you a strong fit for this position?
+                <textarea name="strong_fit" id="strong-fit"></textarea>
+              </label>
+              <label>
+                Expected salary
+                <input name="salary_expectations" id="salary-expectations" placeholder="$120,000" />
+              </label>
+              <label>
+                Notice period
+                <input name="notice_period" id="notice-period" value="Two weeks" />
+              </label>
+              <div class="field wide">
+                <span id="relocation-label">Are you open to relocation?</span>
+                <input name="relocation_answer" id="relocation-answer" aria-labelledby="relocation-label" placeholder="Yes, for the right role." />
+              </div>
+              <label class="wide">
+                Tell us about a project you are proud of
+                <textarea name="proud_project" id="proud-project"></textarea>
+              </label>
+            </div>
+          </fieldset>
 
-        <fieldset>
-          <legend>Application</legend>
-          <div class="grid">
-            <label>
-              Current company
-              <input name="current_company" id="current-company" />
-            </label>
-            <label>
-              Current title
-              <input name="current_title" id="current-title" />
-            </label>
-            <label>
-              Work authorization
-              <select name="work_authorization" id="work-authorization">
-                <option value="">Choose one</option>
-                <option>Authorized to work in this country</option>
-                <option>Require sponsorship</option>
-              </select>
-            </label>
-            <label>
-              Resume / CV
-              <input type="file" name="resume_upload" id="resume-upload" accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain" />
-            </label>
-            <label>
-              Notice period
-              <input name="notice_period" id="notice-period" value="Two weeks" />
-            </label>
-            <label class="wide">
-              Tell us about yourself
-              <textarea name="about_you" id="about-you" placeholder="Short professional intro"></textarea>
-            </label>
-            <label class="wide">
-              Why do you want to work here?
-              <textarea name="motivation" id="motivation"></textarea>
-            </label>
-          </div>
-        </fieldset>
+          <fieldset>
+            <legend>Dynamic questions</legend>
+            <div class="dynamic-slot" id="dynamic-slot">
+              <label class="wide">
+                What is your preferred work environment?
+                <textarea name="preferred_environment" id="preferred-environment"></textarea>
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" id="add-question">Add dynamic question</button>
+              <button type="button" class="secondary" id="clear-dynamic">Clear dynamic fields</button>
+            </div>
+          </fieldset>
 
-        <div class="actions">
-          <button type="submit">Fake submit</button>
-          <output id="result" aria-live="polite"></output>
-        </div>
-      </form>
+          <fieldset>
+            <legend>Uploads and edge cases</legend>
+            <div class="grid">
+              <label>
+                Resume / CV
+                <input type="file" name="resume_upload" id="resume-upload" accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain" />
+              </label>
+              <label>
+                Cover letter
+                <input type="file" name="cover_letter_upload" id="cover-letter-upload" accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain" />
+              </label>
+              <label>
+                Search box that should be ignored
+                <input type="search" name="site_search" id="site-search" placeholder="Search jobs" />
+              </label>
+              <label>
+                Password that should be ignored
+                <input type="password" name="fake_password" id="fake-password" placeholder="Do not fill" />
+              </label>
+              <label class="wide">
+                Existing value preservation test
+                <input name="existing_value" id="existing-value" value="Do not overwrite me unless overwrite mode is enabled." />
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="actions">
+            <button type="submit">Fake submit</button>
+            <button type="button" class="secondary" id="clear-form">Clear form</button>
+            <output id="result" aria-live="polite"></output>
+          </div>
+        </form>
+
+        <aside>
+          <section>
+            <h2>Testing notes</h2>
+            <p>Use this page to confirm Folio only fills confident profile fields and upload controls.</p>
+            <ul class="checklist">
+              <li>Open the popup and fill at least one field.</li>
+              <li>Type manually in a question textarea.</li>
+              <li>Wait for the Folio chip inside the input.</li>
+              <li>Click the chip, then save the answer.</li>
+              <li>Refresh and test that Folio can reuse it.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Event log</h2>
+            <p>Useful for checking that fill events and manual input events fire.</p>
+            <div class="log" id="event-log" aria-live="polite"></div>
+          </section>
+        </aside>
+      </div>
     </main>
 
     <script>
-      document.getElementById("application-form").addEventListener("submit", (event) => {
+      const form = document.getElementById("application-form");
+      const result = document.getElementById("result");
+      const eventLog = document.getElementById("event-log");
+      const dynamicSlot = document.getElementById("dynamic-slot");
+      const controlledEmail = document.getElementById("controlled-email");
+      const controlledEmailStatus = document.getElementById("controlled-email-status");
+      let controlledEmailState = "";
+      let dynamicCount = 1;
+
+      function log(message) {
+        const row = document.createElement("div");
+        row.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+        eventLog.prepend(row);
+      }
+
+      form.addEventListener("submit", (event) => {
         event.preventDefault();
-        document.getElementById("result").textContent = "Submit intercepted for testing.";
+        result.textContent = "Submit intercepted for testing.";
+        log("Submit intercepted.");
       });
+
+      form.addEventListener("input", (event) => {
+        if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+          log(`Input changed: ${event.target.name || event.target.id || event.target.tagName}`);
+        }
+      });
+
+      form.addEventListener("change", (event) => {
+        if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
+          log(`Change fired: ${event.target.name || event.target.id || event.target.tagName}`);
+        }
+      });
+
+      controlledEmail.addEventListener("input", () => {
+        controlledEmailState = controlledEmail.value;
+        controlledEmailStatus.textContent = controlledEmailState ? `App state: ${controlledEmailState}` : "App state: empty";
+        controlledEmailStatus.classList.toggle("is-filled", controlledEmailState.length > 0);
+      });
+
+      document.getElementById("add-question").addEventListener("click", () => {
+        dynamicCount += 1;
+        const label = document.createElement("label");
+        label.className = "wide";
+        label.innerHTML = `
+          Why should we move you to the next interview round? ${dynamicCount}
+          <textarea name="dynamic_question_${dynamicCount}" id="dynamic-question-${dynamicCount}"></textarea>
+        `;
+        dynamicSlot.append(label);
+        log(`Dynamic question ${dynamicCount} added.`);
+      });
+
+      document.getElementById("clear-dynamic").addEventListener("click", () => {
+        dynamicSlot.querySelectorAll("textarea").forEach((field) => {
+          field.value = "";
+          field.dispatchEvent(new Event("input", { bubbles: true }));
+          field.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+        log("Dynamic fields cleared.");
+      });
+
+      document.getElementById("clear-form").addEventListener("click", () => {
+        form.reset();
+        controlledEmailState = "";
+        controlledEmailStatus.textContent = "App state: empty";
+        controlledEmailStatus.classList.remove("is-filled");
+        result.textContent = "Form reset.";
+        log("Form reset.");
+      });
+
+      log("Test form ready.");
     </script>
   </body>
 </html>

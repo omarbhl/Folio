@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Power, RefreshCw, Settings, Zap } from "lucide-react";
+import { CheckCircle2, FileText, Power, RefreshCw, Settings, ShieldCheck, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { addProfileActivity } from "../shared/activity";
 import { CraneMark } from "../shared/brand";
 import { isSafeFillMatch, matchFields } from "../shared/fieldMatching";
 import { getProfile, getThemeMode, saveProfile } from "../shared/storage";
@@ -205,19 +206,28 @@ export function Popup() {
       const totalFilled = fieldResult.filledCount + resumeResult.filledCount;
       if (totalFilled > 0 && profile) {
         const host = await getActiveTabHostname();
-        const nextProfile: FolioProfile = {
+        const now = new Date().toISOString();
+        let nextProfile: FolioProfile = {
           ...profile,
+          documents: profile.documents.map((document) =>
+            resumeResult.filledCount > 0 && selectedResume && document.id === selectedResume.id
+              ? { ...document, usageCount: document.usageCount + 1, lastUsedAt: now }
+              : document
+          ),
           metrics: {
             ...profile.metrics,
             totalFormsFilled: profile.metrics.totalFormsFilled + 1,
             totalFieldsFilled: profile.metrics.totalFieldsFilled + totalFilled,
-            lastAutofillAt: new Date().toISOString()
+            lastAutofillAt: now
           },
           preferences: {
-            ...profile.preferences,
-            learnedSiteHosts: host ? Array.from(new Set([...profile.preferences.learnedSiteHosts, host])) : profile.preferences.learnedSiteHosts
+            ...profile.preferences
           }
         };
+        nextProfile = addProfileActivity(nextProfile, "formFilled", `Autofilled ${totalFilled} item${totalFilled === 1 ? "" : "s"}${host ? ` on ${host}` : ""}`, undefined, now);
+        if (resumeResult.filledCount > 0 && selectedResume) {
+          nextProfile = addProfileActivity(nextProfile, "documentUsed", `Used document: ${selectedResume.fileName || selectedResume.name}`, selectedResume.id, now);
+        }
         setProfile(nextProfile);
         await saveProfile(nextProfile);
       }
@@ -304,10 +314,24 @@ export function Popup() {
             <CraneMark className="popup-mark hero" />
             <span className="popup-eyebrow">Welcome to Folio</span>
             <h1>Customize once. Apply everywhere.</h1>
-            <p>Create your local profile before autofilling applications.</p>
+            <p>Create a local profile once, then use Folio only when you click it.</p>
+            <div className="welcome-steps" aria-label="Setup steps">
+              <span>
+                <CheckCircle2 size={14} />
+                Add contact details
+              </span>
+              <span>
+                <FileText size={14} />
+                Upload resume
+              </span>
+              <span>
+                <ShieldCheck size={14} />
+                Data stays local
+              </span>
+            </div>
             <Button onClick={openOptions}>
               <Settings size={16} />
-              Open profile setup
+              Start setup
             </Button>
         </section>
       </main>
@@ -353,36 +377,36 @@ export function Popup() {
       </header>
 
       {!isEnabled ? (
-        <div className="popup-off-state">
-          <div className="popup-off-icon">
-            <Power size={19} />
+        <div key="folio-off" className="popup-state-view is-off">
+          <div className="popup-state-icon">
+            <Power size={48} />
           </div>
-          <div>
-            <strong>Folio is off</strong>
+          <div className="popup-state-copy">
+            <h2>
+              Folio is <span>off</span>
+            </h2>
             <p>Turn it on when you want Folio to scan this page and fill forms only when you ask.</p>
           </div>
           <Button type="button" size="sm" className="popup-off-button" onClick={() => void toggleExtension(true)}>
-            <Power size={14} />
+            <Power size={18} />
             Turn Folio on
           </Button>
         </div>
       ) : (
-        <>
-
-      <div className={canFillPage ? "popup-fill-state" : "popup-fill-state is-empty"}>
-      <div className="popup-status">
-        <span className={isEnabled && canFillPage ? "status-dot ready" : "status-dot"} />
-        <strong>{readyTitle}</strong>
-      </div>
-      <p className="popup-description">
-        {scanSummary.includes(String(detectedFields.length)) && detectedFields.length > 0 ? (
-          <>
-            Detected <span>{detectedFields.length}</span> fields on this page
-          </>
-        ) : (
-          scanSummary
-        )}
-      </p>
+        <div key="folio-on" className="popup-state-view is-on">
+          <div className="popup-state-icon">
+            <Zap size={48} />
+            <span className="popup-sparkle one" />
+            <span className="popup-sparkle two" />
+            <span className="popup-sparkle three" />
+            <span className="popup-sparkle four" />
+          </div>
+          <div className="popup-state-copy">
+            <h2>
+              Folio is <span>on</span>
+            </h2>
+            <p>Folio will scan this page and auto-fill forms when possible.</p>
+          </div>
 
           {uploadFields.length > 0 && (
             <div className="resume-upload-panel">
@@ -426,14 +450,18 @@ export function Popup() {
           <div className="popup-actions">
             <Button className="ai-fill-button" onClick={fillFields} disabled={!canFillPage}>
               <span className="ai-fill-icon">
-                <Zap size={16} />
+                <Zap size={20} />
               </span>
-              <span>{pickMessage(FILL_BUTTON_MESSAGES, messageSeed)}</span>
+              <span>Fill matched fields</span>
             </Button>
           </div>
-      </div>
-        </>
+        </div>
       )}
+
+      <footer className={isEnabled ? "popup-privacy is-on" : "popup-privacy"}>
+        <ShieldCheck size={18} />
+        <span>Your data stays local and private.</span>
+      </footer>
       </section>
     </main>
   );

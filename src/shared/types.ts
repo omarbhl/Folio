@@ -13,8 +13,7 @@ export type ProfilePath =
   | "personal.postalCode"
   | "personal.linkedin"
   | "personal.github"
-  | "personal.portfolio"
-  | `customAnswers.${number}`;
+  | "personal.portfolio";
 
 export interface PersonalProfile {
   firstName: string;
@@ -62,18 +61,39 @@ export interface ProfileDocument {
   contentKind: "text" | "dataUrl";
   createdAt: string;
   updatedAt: string;
+  usageCount: number;
+  lastUsedAt: string;
 }
 
-export interface CustomAnswer {
-  question: string;
-  answer: string;
-  tags: string[];
+export type ProfileActivityKind =
+  | "documentUploaded"
+  | "documentUpdated"
+  | "documentUsed"
+  | "profileUpdated"
+  | "skillAdded"
+  | "experienceAdded"
+  | "formFilled";
+
+export interface ProfileActivity {
+  id: string;
+  kind: ProfileActivityKind;
+  label: string;
+  createdAt: string;
+  targetId?: string;
 }
 
 export interface ProfileMetrics {
   totalFormsFilled: number;
   totalFieldsFilled: number;
   lastAutofillAt: string;
+  activityLog: ProfileActivity[];
+}
+
+export interface ProfileMetadata {
+  appVersion: string;
+  profileVersion: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AutofillPreferences {
@@ -81,16 +101,15 @@ export interface AutofillPreferences {
   countryAliases: string[];
   cityAliases: string[];
   defaultResumeId: string;
-  learnedSiteHosts: string[];
 }
 
 export interface FolioProfile {
+  metadata: ProfileMetadata;
   personal: PersonalProfile;
   education: EducationEntry[];
   experience: ExperienceEntry[];
   skills: string[];
   documents: ProfileDocument[];
-  customAnswers: CustomAnswer[];
   metrics: ProfileMetrics;
   preferences: AutofillPreferences;
 }

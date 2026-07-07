@@ -1,13 +1,13 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import {
-  BookOpen,
   BriefcaseBusiness,
+  ChevronRight,
   CheckCircle2,
-  Coffee,
+  Clock3,
   FileDown,
   FilePlus2,
   FileText,
-  Film,
+  Github,
   GraduationCap,
   Laptop,
   LayoutDashboard,
@@ -15,10 +15,10 @@ import {
   Plus,
   Save,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Sun,
   Tags,
-  Trophy,
   Trash2,
   Upload,
   UserRound,
@@ -27,33 +27,32 @@ import {
   ZoomIn,
   ZoomOut
 } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
+import { addProfileActivity } from "../shared/activity";
 import { CraneMark } from "../shared/brand";
 import { defaultProfile } from "../shared/defaultProfile";
 import {
   exportProfile,
   getProfile,
   getThemeMode,
+  hasProfile,
   importProfile,
   saveProfile,
   saveThemeMode
 } from "../shared/storage";
 import { applyThemeMode } from "../shared/theme";
-import type { CustomAnswer, EducationEntry, ExperienceEntry, FolioProfile, PersonalProfile, ProfileDocument, ThemeMode } from "../shared/types";
+import type { EducationEntry, ExperienceEntry, FolioProfile, PersonalProfile, ProfileDocument, ThemeMode } from "../shared/types";
 
 const personalFields: Array<{ key: keyof PersonalProfile; label: string; type?: string }> = [
   { key: "firstName", label: "First name" },
@@ -87,13 +86,7 @@ const emptyExperience: ExperienceEntry = {
   description: ""
 };
 
-const emptyAnswer: CustomAnswer = {
-  question: "",
-  answer: "",
-  tags: []
-};
-
-type SectionId = "overview" | "personal" | "files" | "skills" | "education" | "experience" | "answers" | "data";
+type SectionId = "overview" | "personal" | "files" | "skills" | "education" | "experience" | "ai" | "data";
 
 const navItems: Array<{ id: SectionId; label: string; description: string; icon: typeof Sparkles }> = [
   { id: "overview", label: "Analytics", description: "Your profile at a glance, theme, and autofill activity.", icon: LayoutDashboard },
@@ -102,30 +95,14 @@ const navItems: Array<{ id: SectionId; label: string; description: string; icon:
   { id: "skills", label: "Skills", description: "Keep a reusable skill set ready for application platforms.", icon: Tags },
   { id: "education", label: "Education", description: "Add the schools and programs that shaped you.", icon: GraduationCap },
   { id: "experience", label: "Experience", description: "Add the roles you've held and what you did there.", icon: BriefcaseBusiness },
-  { id: "answers", label: "Answers", description: "Save go-to answers for recurring application questions.", icon: FileText },
+  { id: "ai", label: "AI", description: "A smarter application assistant is coming in a future update.", icon: Sparkles },
   { id: "data", label: "Settings", description: "Import, export, and inspect the Folio profile stored in this browser.", icon: ShieldCheck }
 ];
 
-const activityChartConfig = {
-  value: {
-    label: "Value"
-  },
-  forms: {
-    label: "Forms autofilled",
-    color: "var(--chart-1)"
-  },
-  inputs: {
-    label: "Inputs filled",
-    color: "var(--chart-2)"
-  },
-  minutes: {
-    label: "Minutes saved",
-    color: "var(--chart-5)"
-  }
-} satisfies ChartConfig;
-
 const SECONDS_SAVED_PER_FIELD = 8;
 const SECONDS_SAVED_PER_FORM_REVIEW = 20;
+const GITHUB_REPO_URL = "https://github.com/omarbhl/Folio";
+const GITHUB_REPO_API_URL = "https://api.github.com/repos/omarbhl/Folio";
 
 type LocationOption = {
   value: string;
@@ -145,33 +122,23 @@ type LocationDataApi = {
 
 export function OptionsPage() {
   const [profile, setProfile] = useState<FolioProfile>(defaultProfile);
+  const [hasSavedProfile, setHasSavedProfile] = useState(false);
   const [skillInput, setSkillInput] = useState("");
   const [savedSnapshot, setSavedSnapshot] = useState(JSON.stringify(defaultProfile));
   const [status, setStatus] = useState("");
   const [themeMode, setThemeMode] = useState<ThemeMode>("auto");
   const [activeSection, setActiveSection] = useState<SectionId>("overview");
+  const [selectedEducationIndex, setSelectedEducationIndex] = useState(0);
+  const [selectedExperienceIndex, setSelectedExperienceIndex] = useState(0);
   const [locationData, setLocationData] = useState<LocationDataApi | null>(null);
   const [countries, setCountries] = useState<LocationOption[]>([]);
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [fileTagFilter, setFileTagFilter] = useState("");
   const [previewZoom, setPreviewZoom] = useState(1);
   const [documentToDelete, setDocumentToDelete] = useState<ProfileDocument | null>(null);
+  const [githubStarCount, setGithubStarCount] = useState<number | null>(null);
   const isDirty = JSON.stringify(profile) !== savedSnapshot;
   const estimatedSecondsSaved = profile.metrics.totalFieldsFilled * SECONDS_SAVED_PER_FIELD + profile.metrics.totalFormsFilled * SECONDS_SAVED_PER_FORM_REVIEW;
-  const estimatedMinutesSaved = Math.max(0, Math.round(estimatedSecondsSaved / 60));
-  const timeSavedComparison = useMemo(() => getTimeSavedComparison(estimatedSecondsSaved), [estimatedSecondsSaved]);
-  const autofillLevel = useMemo(
-    () => getAutofillLevel(profile.metrics.totalFieldsFilled, profile.metrics.totalFormsFilled),
-    [profile.metrics.totalFieldsFilled, profile.metrics.totalFormsFilled]
-  );
-  const activityFunFacts = useMemo(
-    () => getActivityFunFacts(profile.metrics.totalFieldsFilled, profile.metrics.totalFormsFilled, estimatedSecondsSaved),
-    [estimatedSecondsSaved, profile.metrics.totalFieldsFilled, profile.metrics.totalFormsFilled]
-  );
-  const averageFieldsPerForm =
-    profile.metrics.totalFormsFilled > 0 ? (profile.metrics.totalFieldsFilled / profile.metrics.totalFormsFilled).toFixed(1).replace(/\.0$/, "") : "0";
-  const estimatedKeystrokesSaved = profile.metrics.totalFieldsFilled * 12;
-  const coffeeBreaksSaved = Math.floor(estimatedMinutesSaved / 15);
   const resumeDocuments = useMemo(() => profile.documents.filter((document) => document.type === "resume" && (document.fileName || document.name)), [profile.documents]);
   const resumeTags = useMemo(() => getDocumentTags(resumeDocuments), [resumeDocuments]);
   const filteredResumeDocuments = useMemo(
@@ -210,18 +177,104 @@ export function OptionsPage() {
     const filled = values.filter((value) => value.trim().length > 0).length;
     return Math.round((filled / values.length) * 100);
   }, [profile.personal]);
-  const activityChartData = useMemo(
-    () => [
-      { metric: "Forms", value: profile.metrics.totalFormsFilled, fill: "var(--color-forms)" },
-      { metric: "Inputs", value: profile.metrics.totalFieldsFilled, fill: "var(--color-inputs)" },
-      { metric: "Minutes", value: estimatedMinutesSaved, fill: "var(--color-minutes)" }
-    ],
-    [estimatedMinutesSaved, profile.metrics.totalFormsFilled, profile.metrics.totalFieldsFilled]
+  const missingPersonalFields = useMemo(
+    () => Object.values(profile.personal).filter((value) => value.trim().length === 0).length,
+    [profile.personal]
+  );
+  const reusableDocuments = useMemo(
+    () => profile.documents.filter((document) => document.name.trim().length > 0 || document.fileName.trim().length > 0),
+    [profile.documents]
   );
   const isProfileComplete = profileCompleteness >= 100;
-  const savedStateLabel = isDirty ? "Unsaved changes" : "Saved locally";
+  const hasStarterContact = useMemo(() => getStarterContactProgress(profile) >= 100, [profile]);
+  const hasUsableResume = useMemo(() => resumeDocuments.some((document) => document.content.trim().length > 0), [resumeDocuments]);
+  const onboardingSteps = useMemo(
+    () => [
+      {
+        label: "Add your basics",
+        description: "Name, email, and the contact details forms ask for most.",
+        complete: hasStarterContact,
+        section: "personal" as SectionId,
+        icon: UserRound
+      },
+      {
+        label: "Upload a resume",
+        description: "Keep the file local so Folio can attach it when requested.",
+        complete: hasUsableResume,
+        section: "files" as SectionId,
+        icon: FilePlus2
+      },
+      {
+        label: "Save your profile",
+        description: "Store everything locally before opening the popup.",
+        complete: hasSavedProfile && !isDirty,
+        section: activeSection,
+        icon: Save
+      }
+    ],
+    [activeSection, hasSavedProfile, hasStarterContact, hasUsableResume, isDirty]
+  );
+  const onboardingCompleteCount = onboardingSteps.filter((step) => step.complete).length;
+  const onboardingProgress = Math.round((onboardingCompleteCount / onboardingSteps.length) * 100);
+  const shouldShowOnboarding = onboardingProgress < 100;
+  const overviewStats = useMemo(
+    () => [
+      {
+        label: "Applications autofilled",
+        value: profile.metrics.totalFormsFilled.toLocaleString(),
+        delta: `${profile.metrics.totalFieldsFilled.toLocaleString()} fields filled`,
+        icon: FileText
+      },
+      {
+        label: "Hours saved",
+        value: formatHoursSaved(estimatedSecondsSaved),
+        delta: `${profile.metrics.totalFormsFilled.toLocaleString()} forms processed`,
+        icon: Clock3
+      },
+      {
+        label: "Profile completeness",
+        value: `${profileCompleteness}%`,
+        delta: isProfileComplete ? "Complete" : `${missingPersonalFields} fields left`,
+        icon: Zap
+      },
+      {
+        label: "Documents saved",
+        value: reusableDocuments.length.toLocaleString(),
+        delta: reusableDocuments.length > 0 ? "Ready for uploads" : "Upload a resume",
+        icon: FileText
+      }
+    ],
+    [estimatedSecondsSaved, isProfileComplete, missingPersonalFields, profile.metrics.totalFieldsFilled, profile.metrics.totalFormsFilled, profileCompleteness, reusableDocuments.length]
+  );
+  const overviewCompletionRows = useMemo(
+    () => [
+      { label: "Profile", value: profileCompleteness, icon: UserRound, section: "personal" as SectionId },
+      { label: "Experience", value: getEntriesCompleteness(profile.experience, ["company", "title", "description"]), icon: BriefcaseBusiness, section: "experience" as SectionId },
+      { label: "Education", value: getEntriesCompleteness(profile.education, ["school", "degree", "fieldOfStudy"]), icon: GraduationCap, section: "education" as SectionId },
+      { label: "Skills", value: clampPercent(profile.skills.length * 18), icon: Tags, section: "skills" as SectionId },
+      { label: "Documents", value: clampPercent(reusableDocuments.length * 45), icon: FileText, section: "files" as SectionId },
+      { label: "AI", value: 0, icon: Sparkles, section: "ai" as SectionId },
+      { label: "Autofill privacy", value: profile.preferences.enabled ? 100 : 0, icon: ShieldCheck, section: "data" as SectionId }
+    ],
+    [profile.education, profile.experience, profile.preferences.enabled, profile.skills.length, profileCompleteness, reusableDocuments.length]
+  );
+  const mostUsedDocuments = useMemo(
+    () =>
+      reusableDocuments
+        .sort((first, second) => second.usageCount - first.usageCount)
+        .slice(0, 5),
+    [reusableDocuments]
+  );
+  const recentActivity = useMemo(() => getRecentActivityItems(profile), [profile]);
+  const selectedEducation = profile.education[selectedEducationIndex] ?? profile.education[0] ?? emptyEducation;
+  const savedSelectedEducation = useMemo(() => getSavedEducation(savedSnapshot, selectedEducationIndex), [savedSnapshot, selectedEducationIndex]);
+  const isSelectedEducationDirty = JSON.stringify(selectedEducation) !== JSON.stringify(savedSelectedEducation ?? null);
+  const selectedExperience = profile.experience[selectedExperienceIndex] ?? profile.experience[0] ?? emptyExperience;
+  const savedSelectedExperience = useMemo(() => getSavedExperience(savedSnapshot, selectedExperienceIndex), [savedSnapshot, selectedExperienceIndex]);
+  const isSelectedExperienceDirty = JSON.stringify(selectedExperience) !== JSON.stringify(savedSelectedExperience ?? null);
   const activeItem = navItems.find((item) => item.id === activeSection) ?? navItems[0];
   useEffect(() => {
+    hasProfile().then(setHasSavedProfile);
     getProfile().then((storedProfile) => {
       if (storedProfile) {
         setProfile(storedProfile);
@@ -234,6 +287,55 @@ export function OptionsPage() {
 
   useEffect(() => {
     getThemeMode().then(setThemeMode);
+  }, []);
+
+  useEffect(() => {
+    if (profile.education.length === 0) {
+      setSelectedEducationIndex(0);
+      return;
+    }
+
+    if (selectedEducationIndex >= profile.education.length) {
+      setSelectedEducationIndex(profile.education.length - 1);
+    }
+  }, [profile.education.length, selectedEducationIndex]);
+
+  useEffect(() => {
+    if (profile.experience.length === 0) {
+      setSelectedExperienceIndex(0);
+      return;
+    }
+
+    if (selectedExperienceIndex >= profile.experience.length) {
+      setSelectedExperienceIndex(profile.experience.length - 1);
+    }
+  }, [profile.experience.length, selectedExperienceIndex]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(`${GITHUB_REPO_API_URL}?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/vnd.github+json",
+        "Cache-Control": "no-cache"
+      },
+      signal: controller.signal
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((repo: unknown) => {
+        const stars = getGitHubStarCount(repo);
+        if (typeof stars === "number") {
+          setGithubStarCount(stars);
+        }
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+      });
+
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -319,7 +421,7 @@ export function OptionsPage() {
       return;
     }
 
-    setProfile((current) => ({ ...current, skills: [...current.skills, nextSkill] }));
+    setProfile((current) => addProfileActivity({ ...current, skills: [...current.skills, nextSkill] }, "skillAdded", `Added skill: ${nextSkill}`));
     setSkillInput("");
   }
 
@@ -334,6 +436,39 @@ export function OptionsPage() {
     }));
   }
 
+  function addEducation() {
+    const nextIndex = profile.education.length;
+    setProfile((current) => ({ ...current, education: [...current.education, { ...emptyEducation }] }));
+    setSelectedEducationIndex(nextIndex);
+  }
+
+  function deleteSelectedEducation() {
+    if (profile.education.length <= 1) {
+      return;
+    }
+
+    setProfile((current) => ({
+      ...current,
+      education: current.education.filter((_, entryIndex) => entryIndex !== selectedEducationIndex)
+    }));
+    setSelectedEducationIndex((currentIndex) => Math.max(0, currentIndex - 1));
+  }
+
+  function cancelSelectedEducationChanges() {
+    const savedEducation = getSavedEducation(savedSnapshot, selectedEducationIndex);
+    if (!savedEducation) {
+      if (profile.education.length > 1) {
+        deleteSelectedEducation();
+      }
+      return;
+    }
+
+    setProfile((current) => ({
+      ...current,
+      education: current.education.map((entry, entryIndex) => (entryIndex === selectedEducationIndex ? savedEducation : entry))
+    }));
+  }
+
   function updateExperience(index: number, key: keyof ExperienceEntry, value: string | boolean) {
     setProfile((current) => ({
       ...current,
@@ -341,18 +476,45 @@ export function OptionsPage() {
     }));
   }
 
-  function updateAnswer(index: number, key: keyof CustomAnswer, value: string) {
+  function addExperience() {
+    const nextIndex = profile.experience.length;
+    setProfile((current) => ({ ...current, experience: [...current.experience, { ...emptyExperience }] }));
+    setSelectedExperienceIndex(nextIndex);
+  }
+
+  function deleteSelectedExperience() {
+    if (profile.experience.length <= 1) {
+      return;
+    }
+
     setProfile((current) => ({
       ...current,
-      customAnswers: current.customAnswers.map((entry, entryIndex) =>
-        entryIndex === index ? { ...entry, [key]: key === "tags" ? splitTags(value) : value } : entry
-      )
+      experience: current.experience.filter((_, entryIndex) => entryIndex !== selectedExperienceIndex)
+    }));
+    setSelectedExperienceIndex((currentIndex) => Math.max(0, currentIndex - 1));
+  }
+
+  function cancelSelectedExperienceChanges() {
+    const savedExperience = getSavedExperience(savedSnapshot, selectedExperienceIndex);
+    if (!savedExperience) {
+      if (profile.experience.length > 1) {
+        deleteSelectedExperience();
+      }
+      return;
+    }
+
+    setProfile((current) => ({
+      ...current,
+      experience: current.experience.map((entry, entryIndex) => (entryIndex === selectedExperienceIndex ? savedExperience : entry))
     }));
   }
 
   async function handleSave() {
-    await saveProfile(profile);
-    setSavedSnapshot(JSON.stringify(profile));
+    const nextProfile = addProfileActivity(profile, "profileUpdated", "Saved profile changes");
+    setProfile(nextProfile);
+    await saveProfile(nextProfile);
+    setHasSavedProfile(true);
+    setSavedSnapshot(JSON.stringify(nextProfile));
     setStatus("Profile saved locally.");
   }
 
@@ -377,6 +539,7 @@ export function OptionsPage() {
     try {
       const imported = await importProfile(await file.text());
       setProfile(imported);
+      setHasSavedProfile(true);
       setSavedSnapshot(JSON.stringify(imported));
       setSelectedDocumentId(imported.documents.find((document) => document.type === "resume" && (document.fileName || document.name))?.id ?? "");
       setStatus("Profile imported and saved locally.");
@@ -403,23 +566,33 @@ export function OptionsPage() {
     }
 
     const documents = await Promise.all(files.map(readResumeDocument));
-    setProfile((current) => ({
-      ...current,
-      documents: [...current.documents.filter((document) => document.fileName || document.name), ...documents],
-      preferences: { ...current.preferences, defaultResumeId: current.preferences.defaultResumeId || documents[0]?.id || "" }
-    }));
+    setProfile((current) => {
+      const nextProfile = {
+        ...current,
+        documents: [...current.documents.filter((document) => document.fileName || document.name), ...documents],
+        preferences: { ...current.preferences, defaultResumeId: current.preferences.defaultResumeId || documents[0]?.id || "" }
+      };
+      return documents.reduce(
+        (profileWithActivity, document) =>
+          addProfileActivity(profileWithActivity, "documentUploaded", `Uploaded document: ${document.fileName || document.name}`, document.id, document.createdAt),
+        nextProfile
+      );
+    });
     setSelectedDocumentId(documents[0]?.id ?? "");
     setStatus(`${documents.length} resume file${documents.length === 1 ? "" : "s"} added.`);
     event.target.value = "";
   }
 
   function updateDocument(id: string, updates: Partial<ProfileDocument>) {
-    setProfile((current) => ({
-      ...current,
-      documents: current.documents.map((document) =>
-        document.id === id ? { ...document, ...updates, updatedAt: new Date().toISOString() } : document
-      )
-    }));
+    setProfile((current) => {
+      const now = new Date().toISOString();
+      return {
+        ...current,
+        documents: current.documents.map((document) =>
+          document.id === id ? { ...document, ...updates, updatedAt: now } : document
+        )
+      };
+    });
   }
 
   function deleteDocument(id: string) {
@@ -474,10 +647,13 @@ export function OptionsPage() {
           </div>
 
           <div className="topbar-actions">
-            <Badge variant={isDirty ? "outline" : "secondary"} className="gap-1.5">
-              {isDirty ? <Sparkles size={13} /> : <CheckCircle2 size={13} />}
-              {savedStateLabel}
-            </Badge>
+            <Button asChild variant="outline" className="github-star-button">
+              <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" aria-label="Star omarbhl/Folio on GitHub">
+                <Github size={16} />
+                <span>Star Folio</span>
+                <strong>{githubStarCount === null ? "..." : formatCompactCount(githubStarCount)}</strong>
+              </a>
+            </Button>
             <ToggleGroup
               type="single"
               value={themeMode}
@@ -516,6 +692,49 @@ export function OptionsPage() {
           </div>
         </div>
 
+        {shouldShowOnboarding && (
+          <section className="onboarding-panel" aria-labelledby="onboarding-title">
+            <div className="onboarding-copy">
+              <p className="eyebrow">Quick start</p>
+              <h2 id="onboarding-title">Get Folio ready for your first application.</h2>
+              <p>Finish these once. Folio stays local, scans only when you ask, and fills only confident matches.</p>
+            </div>
+            <div className="onboarding-progress">
+              <div>
+                <span>{onboardingCompleteCount} of {onboardingSteps.length} done</span>
+                <strong>{onboardingProgress}%</strong>
+              </div>
+              <Progress value={onboardingProgress} className="h-1.5" />
+            </div>
+            <div className="onboarding-steps">
+              {onboardingSteps.map((step) => {
+                const Icon = step.complete ? CheckCircle2 : step.icon;
+                return (
+                  <button
+                    type="button"
+                    key={step.label}
+                    className={step.complete ? "is-complete" : ""}
+                    onClick={() => {
+                      if (step.label === "Save your profile") {
+                        void handleSave();
+                        return;
+                      }
+                      setActiveSection(step.section);
+                    }}
+                  >
+                    <Icon size={16} />
+                    <span>
+                      <strong>{step.label}</strong>
+                      <small>{step.description}</small>
+                    </span>
+                    <ChevronRight size={15} />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         <nav className="settings-tabs" aria-label="Settings categories">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -545,140 +764,169 @@ export function OptionsPage() {
         <main className="settings-main">
           <div className="options-content-grid">
             {activeSection === "overview" && (
-              <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Your professional identity travels with you.</CardTitle>
-                    <CardDescription>
-                      Create your profile once, keep it private, and decide exactly when Folio fills forms for you.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-5">
-                    {isProfileComplete ? (
-                      <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-sm">
-                        <CheckCircle2 size={16} />
-                        <span>Your profile is complete.</span>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Profile completeness</span>
-                          <span className="font-medium">{profileCompleteness}%</span>
+              <div className="overview-dashboard span-columns">
+                <div className="overview-stat-grid">
+                  {overviewStats.map((stat) => {
+                    const Icon = stat.icon;
+                    return (
+                      <article className="overview-stat-card" key={stat.label}>
+                        <div className="overview-stat-icon">
+                          <Icon size={23} />
                         </div>
-                        <Progress value={profileCompleteness} />
-                      </div>
-                    )}
+                        <div>
+                          <strong>{stat.value}</strong>
+                          <span>{stat.label}</span>
+                          <small>{stat.delta}</small>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
 
-                    <div className="overview-items grid gap-3 sm:grid-cols-2">
-                      <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
-                        <GraduationCap size={16} className="text-muted-foreground" />
-                        <div className="leading-tight">
-                          <p className="text-sm font-semibold">{profile.education.length}</p>
-                          <p className="text-xs text-muted-foreground">Education</p>
-                        </div>
+                <div className="overview-dashboard-grid">
+                  <Card className="overview-panel overview-profile-card">
+                    <CardHeader>
+                      <CardTitle>Profile completion</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overview-completion-list">
+                        {overviewCompletionRows.map((row) => {
+                          const Icon = row.icon;
+                          return (
+                            <button type="button" className="overview-completion-row" key={row.label} onClick={() => setActiveSection(row.section)}>
+                              <Icon size={16} />
+                              <span>{row.label}</span>
+                              <Progress value={row.value} className="overview-completion-progress" />
+                              <strong>{row.value}%</strong>
+                              <ChevronRight size={15} />
+                            </button>
+                          );
+                        })}
                       </div>
-                      <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
-                        <BriefcaseBusiness size={16} className="text-muted-foreground" />
-                        <div className="leading-tight">
-                          <p className="text-sm font-semibold">{profile.experience.length}</p>
-                          <p className="text-xs text-muted-foreground">Experience</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
-                        <Tags size={16} className="text-muted-foreground" />
-                        <div className="leading-tight">
-                          <p className="text-sm font-semibold">{profile.skills.length}</p>
-                          <p className="text-xs text-muted-foreground">Skills</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
-                        <FileText size={16} className="text-muted-foreground" />
-                        <div className="leading-tight">
-                          <p className="text-sm font-semibold">{resumeDocuments.length}</p>
-                          <p className="text-xs text-muted-foreground">Resume files</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <button type="button" className="overview-complete-profile" onClick={() => setActiveSection(isProfileComplete ? "overview" : "personal")}>
+                        <span>
+                          <strong>{isProfileComplete ? "Profile complete" : "Complete your profile"}</strong>
+                          <small>{isProfileComplete ? "Folio is ready for applications" : "Get the most out of Folio"}</small>
+                        </span>
+                        <ChevronRight size={17} />
+                      </button>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Autofill activity</CardTitle>
-                    <CardDescription>Inputs filled, forms handled, and tiny wins that add up.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="activity-rank">
-                      <div>
-                        <span>{autofillLevel.kicker}</span>
-                        <strong>{autofillLevel.title}</strong>
+                  <Card className="overview-panel">
+                    <CardHeader className="overview-panel-header">
+                      <CardTitle>AI assistant</CardTitle>
+                      <Button type="button" variant="outline" size="xs" onClick={() => setActiveSection("ai")}>
+                        Preview
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overview-ai-preview">
+                        <Sparkles size={18} />
+                        <strong>Coming soon</strong>
+                        <p>Future Folio updates will bring smarter help for application questions.</p>
                       </div>
-                      <Badge variant="secondary" className="gap-1.5">
-                        <Trophy size={13} />
-                        {autofillLevel.badge}
-                      </Badge>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
-                        <p className="text-2xl font-semibold">{profile.metrics.totalFormsFilled}</p>
-                        <p className="text-xs text-muted-foreground">Forms filled</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="overview-panel">
+                    <CardHeader className="overview-panel-header">
+                      <CardTitle>Most used documents</CardTitle>
+                      <Button type="button" variant="outline" size="xs" onClick={() => setActiveSection("files")}>
+                        View all
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <ol className="overview-document-list">
+                        {mostUsedDocuments.length > 0 ? (
+                          mostUsedDocuments.map((document) => (
+                            <li key={document.id}>
+                              <FileText size={16} />
+                              <strong>{document.fileName || document.name}</strong>
+                              <small>{document.usageCount} uses</small>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="overview-empty-row">No documents uploaded yet.</li>
+                        )}
+                      </ol>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="overview-panel">
+                    <CardHeader className="overview-panel-header">
+                      <CardTitle>Recent activity</CardTitle>
+                      <Button type="button" variant="outline" size="xs" onClick={() => setActiveSection("overview")}>
+                        View all
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overview-activity-list">
+                        {recentActivity.length > 0 ? (
+                          recentActivity.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <div key={`${item.label}-${item.time}`}>
+                                <Icon size={15} />
+                                <span>{item.label}</span>
+                                <small>{item.time}</small>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p className="overview-empty-row">No activity recorded yet.</p>
+                        )}
                       </div>
-                      <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
-                        <p className="text-2xl font-semibold">{profile.metrics.totalFieldsFilled}</p>
-                        <p className="text-xs text-muted-foreground">Inputs filled</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="overview-panel">
+                    <CardHeader>
+                      <CardTitle>Quick actions</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overview-action-grid">
+                        <button type="button" onClick={() => setActiveSection("ai")}>
+                          <Sparkles size={18} />
+                          <span>
+                            <strong>AI</strong>
+                            <small>Coming soon</small>
+                          </span>
+                        </button>
+                        <button type="button" onClick={() => setActiveSection("files")}>
+                          <Upload size={18} />
+                          <span>
+                            <strong>Upload document</strong>
+                            <small>Add your files</small>
+                          </span>
+                        </button>
+                        <button type="button" onClick={() => setActiveSection("personal")}>
+                          <UserRound size={18} />
+                          <span>
+                            <strong>Edit profile</strong>
+                            <small>Update your info</small>
+                          </span>
+                        </button>
+                        <button type="button" onClick={() => setActiveSection("data")}>
+                          <SlidersHorizontal size={18} />
+                          <span>
+                            <strong>Settings</strong>
+                            <small>Manage controls</small>
+                          </span>
+                        </button>
+                        <button type="button" className="overview-action-wide" onClick={handleExport}>
+                          <FileDown size={18} />
+                          <span>
+                            <strong>Export profile</strong>
+                            <small>Backup your data</small>
+                          </span>
+                          <ChevronRight size={17} />
+                        </button>
                       </div>
-                      <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
-                        <p className="text-2xl font-semibold">{formatTimeSaved(estimatedSecondsSaved)}</p>
-                        <p className="text-xs text-muted-foreground">Estimated time saved</p>
-                      </div>
-                    </div>
-                    <div className="activity-mini-grid">
-                      <div>
-                        <Zap size={15} />
-                        <span>{averageFieldsPerForm}</span>
-                        <small>inputs per form</small>
-                      </div>
-                      <div>
-                        <Sparkles size={15} />
-                        <span>{estimatedKeystrokesSaved.toLocaleString()}</span>
-                        <small>keystrokes avoided</small>
-                      </div>
-                      <div>
-                        <CheckCircle2 size={15} />
-                        <span>{profile.metrics.lastAutofillAt ? "Active" : "Ready"}</span>
-                        <small>{profile.metrics.lastAutofillAt ? `last used ${formatActivityDate(profile.metrics.lastAutofillAt)}` : "waiting for first fill"}</small>
-                      </div>
-                      <div>
-                        <Coffee size={15} />
-                        <span>{coffeeBreaksSaved}</span>
-                        <small>coffee breaks saved</small>
-                      </div>
-                    </div>
-                    <div className="time-saved-callout">
-                      {timeSavedComparison.kind === "books" ? <BookOpen size={18} /> : <Film size={18} />}
-                      <span>{timeSavedComparison.label}</span>
-                    </div>
-                    <div className="activity-fun-facts">
-                      {activityFunFacts.map((fact) => (
-                        <span key={fact}>{fact}</span>
-                      ))}
-                    </div>
-                    <ChartContainer config={activityChartConfig} className="activity-chart mt-5 h-[220px] w-full">
-                      <BarChart accessibilityLayer data={activityChartData} layout="vertical" margin={{ left: 8, right: 18 }}>
-                        <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-                        <YAxis dataKey="metric" type="category" tickLine={false} axisLine={false} width={76} />
-                        <XAxis type="number" tickLine={false} axisLine={false} allowDecimals={false} />
-                        <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                        <Bar dataKey="value" radius={8}>
-                          {activityChartData.map((entry) => (
-                            <Cell key={entry.metric} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ChartContainer>
-                  </CardContent>
-                </Card>
-              </>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             )}
 
             {activeSection === "personal" && (
@@ -928,216 +1176,269 @@ export function OptionsPage() {
             )}
 
             {activeSection === "education" && (
-              <div className="education-layout span-columns">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+              <div className="education-workspace span-columns">
+                <Card className="education-timeline-card education-selector-card">
+                  <CardHeader className="education-list-header">
                     <div>
-                      <CardTitle>Education</CardTitle>
-                      <CardDescription>Schools, degrees, and programs.</CardDescription>
+                      <CardTitle>
+                        Education <Badge variant="secondary">{profile.education.length}</Badge>
+                      </CardTitle>
+                      <CardDescription>Your academic timeline.</CardDescription>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => setProfile((current) => ({ ...current, education: [...current.education, emptyEducation] }))}
-                    >
-                      <Plus size={16} />
-                      Add
+                    <Button size="sm" onClick={addEducation}>
+                      <Plus size={15} />
+                      Add education
                     </Button>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {profile.education.map((entry, index) => (
-                      <article key={index} className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
-                        <div className="flex items-center justify-between">
-                          <strong className="text-sm font-medium">Education {index + 1}</strong>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              setProfile((current) => ({
-                                ...current,
-                                education: current.education.filter((_, entryIndex) => entryIndex !== index)
-                              }))
-                            }
-                            disabled={profile.education.length === 1}
-                          >
-                            <Trash2 size={16} />
-                            Remove
-                          </Button>
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          {(["school", "degree", "fieldOfStudy"] as Array<keyof EducationEntry>).map((key) => (
-                            <div className="space-y-1.5" key={key}>
-                              <Label htmlFor={`education-${index}-${key}`}>{key === "fieldOfStudy" ? "Field of study" : labelFromKey(key)}</Label>
-                              <Input
-                                id={`education-${index}-${key}`}
-                                value={String(entry[key])}
-                                onChange={(event) => updateEducation(index, key, event.target.value)}
-                              />
-                            </div>
-                          ))}
-                          <YearField
-                            id={`education-${index}-startDate`}
-                            label="Start date"
-                            value={entry.startDate}
-                            onChange={(value) => updateEducation(index, "startDate", value)}
-                          />
-                          <DateField
-                            id={`education-${index}-endDate`}
-                            label="End date"
-                            value={entry.endDate}
-                            onChange={(value) => updateEducation(index, "endDate", value)}
-                          />
-                          <div className="space-y-1.5 sm:col-span-2">
-                            <Label htmlFor={`education-${index}-description`}>Description</Label>
-                            <Textarea
-                              id={`education-${index}-description`}
-                              value={entry.description}
-                              onChange={(event) => updateEducation(index, "description", event.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </article>
-                    ))}
+                  <CardContent>
+                    <EducationTimeline entries={profile.education} selectedIndex={selectedEducationIndex} onSelect={setSelectedEducationIndex} />
+                    <div className="education-tip">
+                      <Sparkles size={15} />
+                      <p>Keep your newest or most relevant education easy to find. Folio uses this when matching school and degree fields.</p>
+                    </div>
                   </CardContent>
                 </Card>
 
-                <Card className="education-timeline-card">
-                  <CardHeader>
-                    <CardTitle>Timeline</CardTitle>
-                    <CardDescription>Your education history at a glance.</CardDescription>
+                <Card className="education-editor-card">
+                  <CardHeader className="education-editor-header">
+                    <div>
+                      <CardTitle>{selectedEducation.school || "School not set"}</CardTitle>
+                      <CardDescription>
+                        {[selectedEducation.degree, selectedEducation.fieldOfStudy, formatTimelineRange(selectedEducation.startDate, selectedEducation.endDate)]
+                          .filter(Boolean)
+                          .join(" - ")}
+                      </CardDescription>
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <EducationTimeline entries={profile.education} />
+                  <CardContent className="education-editor-content">
+                    <div className="education-form-grid">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="education-selected-school">School</Label>
+                        <Input
+                          id="education-selected-school"
+                          value={selectedEducation.school}
+                          onChange={(event) => updateEducation(selectedEducationIndex, "school", event.target.value)}
+                          placeholder="University or school"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="education-selected-degree">Degree</Label>
+                        <Input
+                          id="education-selected-degree"
+                          value={selectedEducation.degree}
+                          onChange={(event) => updateEducation(selectedEducationIndex, "degree", event.target.value)}
+                          placeholder="Bachelor, Master, Certificate"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="education-selected-field">Field of study</Label>
+                        <Input
+                          id="education-selected-field"
+                          value={selectedEducation.fieldOfStudy}
+                          onChange={(event) => updateEducation(selectedEducationIndex, "fieldOfStudy", event.target.value)}
+                          placeholder="Computer Science"
+                        />
+                      </div>
+                      <YearField
+                        id="education-selected-startDate"
+                        label="Start date"
+                        value={selectedEducation.startDate}
+                        onChange={(value) => updateEducation(selectedEducationIndex, "startDate", value)}
+                      />
+                      <DateField
+                        id="education-selected-endDate"
+                        label="End date"
+                        value={selectedEducation.endDate}
+                        onChange={(value) => updateEducation(selectedEducationIndex, "endDate", value)}
+                      />
+                      <div className="education-description-field">
+                        <Label htmlFor="education-selected-description">Description</Label>
+                        <Textarea
+                          id="education-selected-description"
+                          value={selectedEducation.description}
+                          onChange={(event) => updateEducation(selectedEducationIndex, "description", event.target.value)}
+                          placeholder="Add coursework, honors, or focus areas."
+                        />
+                      </div>
+                    </div>
                   </CardContent>
+                  <div className="education-editor-actions">
+                    <Button type="button" variant="ghost" onClick={deleteSelectedEducation} disabled={profile.education.length === 1}>
+                      <Trash2 size={15} />
+                      Delete
+                    </Button>
+                    <div>
+                      <Button type="button" variant="outline" onClick={cancelSelectedEducationChanges} disabled={!isSelectedEducationDirty}>
+                        Cancel
+                      </Button>
+                      <Button type="button" onClick={() => void handleSave()} disabled={!isDirty}>
+                        <Save size={15} />
+                        Save changes
+                      </Button>
+                    </div>
+                  </div>
                 </Card>
               </div>
             )}
 
             {activeSection === "experience" && (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-                  <div>
-                    <CardTitle>Experience</CardTitle>
-                    <CardDescription>Roles, responsibilities, and impact.</CardDescription>
+              <div className="experience-workspace span-columns">
+                <Card className="experience-list-card">
+                  <CardHeader className="experience-list-header">
+                    <div>
+                      <CardTitle>
+                        Experience <Badge variant="secondary">{profile.experience.length}</Badge>
+                      </CardTitle>
+                      <CardDescription>Your work history and impact.</CardDescription>
+                    </div>
+                    <Button size="sm" onClick={addExperience}>
+                      <Plus size={15} />
+                      Add experience
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="experience-list" role="list">
+                      {profile.experience.map((entry, index) => {
+                        const isSelected = index === selectedExperienceIndex;
+                        return (
+                          <button
+                            type="button"
+                            key={`experience-${index}`}
+                            className={isSelected ? "experience-list-item is-selected" : "experience-list-item"}
+                            onClick={() => setSelectedExperienceIndex(index)}
+                          >
+                            <span className="experience-list-dot" />
+                            <span className="experience-avatar">{getExperienceInitials(entry)}</span>
+                            <span className="experience-list-copy">
+                              <strong>{entry.title || "Untitled role"}</strong>
+                              <small>{entry.company || "Company not set"}</small>
+                              <small>{formatExperienceRange(entry)}</small>
+                            </span>
+                            {entry.current && <Badge className="experience-current-badge">Current</Badge>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="experience-tip">
+                      <Sparkles size={15} />
+                      <p>List your most relevant experience first. Focus on impact, not just duties.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="experience-editor-card">
+                  <CardHeader className="experience-editor-header">
+                    <div>
+                      <CardTitle>{selectedExperience.title || "Untitled role"}</CardTitle>
+                      <CardDescription>
+                        {[selectedExperience.company, selectedExperience.location, formatExperienceRange(selectedExperience)].filter(Boolean).join(" - ")}
+                      </CardDescription>
+                    </div>
+                    {selectedExperience.current && <Badge className="experience-current-badge">Current</Badge>}
+                  </CardHeader>
+                  <CardContent className="experience-editor-content">
+                    <div className="experience-form-grid">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="experience-selected-title">Job title</Label>
+                        <Input
+                          id="experience-selected-title"
+                          value={selectedExperience.title}
+                          onChange={(event) => updateExperience(selectedExperienceIndex, "title", event.target.value)}
+                          placeholder="Software Engineer"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="experience-selected-company">Company</Label>
+                        <Input
+                          id="experience-selected-company"
+                          value={selectedExperience.company}
+                          onChange={(event) => updateExperience(selectedExperienceIndex, "company", event.target.value)}
+                          placeholder="Company"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="experience-selected-location">Location</Label>
+                        <Input
+                          id="experience-selected-location"
+                          value={selectedExperience.location}
+                          onChange={(event) => updateExperience(selectedExperienceIndex, "location", event.target.value)}
+                          placeholder="City, Country"
+                        />
+                      </div>
+                      <DateField
+                        id="experience-selected-startDate"
+                        label="Start date"
+                        value={selectedExperience.startDate}
+                        onChange={(value) => updateExperience(selectedExperienceIndex, "startDate", value)}
+                      />
+                      <DateField
+                        id="experience-selected-endDate"
+                        label="End date"
+                        value={selectedExperience.endDate}
+                        onChange={(value) => updateExperience(selectedExperienceIndex, "endDate", value)}
+                        disabled={selectedExperience.current}
+                      />
+                      <div className="experience-current-row">
+                        <Label htmlFor="experience-selected-current">I currently work here</Label>
+                        <Switch
+                          id="experience-selected-current"
+                          checked={selectedExperience.current}
+                          onCheckedChange={(checked) => updateExperience(selectedExperienceIndex, "current", checked)}
+                        />
+                      </div>
+                      <div className="experience-description-field">
+                        <Label htmlFor="experience-selected-description">Description</Label>
+                        <Textarea
+                          id="experience-selected-description"
+                          value={selectedExperience.description}
+                          onChange={(event) => updateExperience(selectedExperienceIndex, "description", event.target.value)}
+                          placeholder="Add responsibilities, tools, and outcomes."
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                  <div className="experience-editor-actions">
+                    <Button type="button" variant="ghost" onClick={deleteSelectedExperience} disabled={profile.experience.length === 1}>
+                      <Trash2 size={15} />
+                      Delete
+                    </Button>
+                    <div>
+                      <Button type="button" variant="outline" onClick={cancelSelectedExperienceChanges} disabled={!isSelectedExperienceDirty}>
+                        Cancel
+                      </Button>
+                      <Button type="button" onClick={() => void handleSave()} disabled={!isDirty}>
+                        <Save size={15} />
+                        Save changes
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setProfile((current) => ({ ...current, experience: [...current.experience, emptyExperience] }))}
-                  >
-                    <Plus size={16} />
-                    Add
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {profile.experience.map((entry, index) => (
-                    <article key={index} className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
-                      <div className="flex items-center justify-between">
-                        <strong className="text-sm font-medium">Experience {index + 1}</strong>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setProfile((current) => ({
-                              ...current,
-                              experience: current.experience.filter((_, entryIndex) => entryIndex !== index)
-                            }))
-                          }
-                          disabled={profile.experience.length === 1}
-                        >
-                          <Trash2 size={16} />
-                          Remove
-                        </Button>
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        {(["company", "title", "location"] as Array<keyof ExperienceEntry>).map((key) => (
-                          <div className="space-y-1.5" key={key}>
-                            <Label htmlFor={`experience-${index}-${key}`}>{labelFromKey(key)}</Label>
-                            <Input
-                              id={`experience-${index}-${key}`}
-                              value={String(entry[key])}
-                              onChange={(event) => updateExperience(index, key, event.target.value)}
-                            />
-                          </div>
-                        ))}
-                        <DateField
-                          id={`experience-${index}-startDate`}
-                          label="Start date"
-                          value={entry.startDate}
-                          onChange={(value) => updateExperience(index, "startDate", value)}
-                        />
-                        <DateField
-                          id={`experience-${index}-endDate`}
-                          label="End date"
-                          value={entry.endDate}
-                          onChange={(value) => updateExperience(index, "endDate", value)}
-                          disabled={entry.current}
-                        />
-                        <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2.5 sm:col-span-2">
-                          <Label htmlFor={`experience-${index}-current`} className="cursor-pointer">
-                            I currently work here
-                          </Label>
-                          <Switch
-                            id={`experience-${index}-current`}
-                            checked={entry.current}
-                            onCheckedChange={(checked) => updateExperience(index, "current", checked)}
-                          />
-                        </div>
-                        <div className="space-y-1.5 sm:col-span-2">
-                          <Label htmlFor={`experience-${index}-description`}>Description</Label>
-                          <Textarea
-                            id={`experience-${index}-description`}
-                            value={entry.description}
-                            onChange={(event) => updateExperience(index, "description", event.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </CardContent>
-              </Card>
+                </Card>
+              </div>
             )}
 
-            {activeSection === "answers" && (
-              <Card className="span-columns custom-answers-card">
-                <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-                  <div>
-                    <CardTitle>Custom answers</CardTitle>
-                    <CardDescription>Reusable answers for recurring application questions.</CardDescription>
+            {activeSection === "ai" && (
+              <Card className="span-columns ai-placeholder-card">
+                <CardContent>
+                  <div className="ai-placeholder">
+                    <div className="ai-placeholder-icon">
+                      <Sparkles size={30} />
+                    </div>
+                    <p className="eyebrow">AI</p>
+                    <h2>Coming soon in the next updates.</h2>
+                    <p>We are preparing a smarter assistant for application questions, review, and writing help. For now, Folio stays focused on private profile autofill.</p>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setProfile((current) => ({ ...current, customAnswers: [...current.customAnswers, emptyAnswer] }))}
-                  >
-                    <Plus size={16} />
-                    Add
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <CustomAnswersTable
-                    answers={profile.customAnswers}
-                    onUpdate={updateAnswer}
-                    onRemove={(index) =>
-                      setProfile((current) => ({
-                        ...current,
-                        customAnswers: current.customAnswers.filter((_, entryIndex) => entryIndex !== index)
-                      }))
-                    }
-                  />
                 </CardContent>
               </Card>
             )}
 
             {activeSection === "data" && (
-              <Card className="span-columns">
-                <CardHeader>
-                  <CardTitle>Settings</CardTitle>
-                  <CardDescription>Manage local profile data and extension preferences.</CardDescription>
-                </CardHeader>
-                <CardContent className="settings-grid">
-                  <div className="settings-panel">
-                    <div>
-                      <strong>Local data</strong>
-                      <p>Export a backup or import an existing Folio profile.</p>
-                    </div>
+              <div className="settings-clean-layout span-columns">
+                <Card className="local-data-card">
+                  <CardHeader>
+                    <CardTitle>Local data</CardTitle>
+                    <CardDescription>Export a backup or import an existing Folio profile.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
                     <div className="data-actions">
                       <Button variant="outline" onClick={handleExport}>
                         <FileDown size={16} />
@@ -1151,24 +1452,9 @@ export function OptionsPage() {
                         </label>
                       </Button>
                     </div>
-                  </div>
-
-                  <div className="settings-panel is-placeholder">
-                    <strong>Backup schedule</strong>
-                    <p>Automatic encrypted backups can live here when Folio adds sync support.</p>
-                  </div>
-
-                  <div className="settings-panel is-placeholder">
-                    <strong>Site permissions</strong>
-                    <p>Review trusted sites, learning permissions, and extension availability controls.</p>
-                  </div>
-
-                  <div className="settings-panel is-placeholder">
-                    <strong>Privacy controls</strong>
-                    <p>Future controls for clearing learned answers, resumes, and local activity counters.</p>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
         </main>
@@ -1184,83 +1470,149 @@ function splitTags(value: string): string[] {
     .filter(Boolean);
 }
 
-function formatTimeSaved(seconds: number): string {
+function getGitHubStarCount(repo: unknown): number | null {
+  if (!repo || typeof repo !== "object" || !("stargazers_count" in repo)) {
+    return null;
+  }
+
+  const stars = (repo as { stargazers_count?: unknown }).stargazers_count;
+  return typeof stars === "number" ? stars : null;
+}
+
+function formatCompactCount(value: number): string {
+  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
+function getStarterContactProgress(profile: FolioProfile): number {
+  const fields: Array<keyof PersonalProfile> = ["firstName", "lastName", "fullName", "email", "phone"];
+  const filled = fields.filter((field) => profile.personal[field].trim().length > 0).length;
+  return Math.round((filled / fields.length) * 100);
+}
+
+function getSavedExperience(snapshot: string, index: number): ExperienceEntry | null {
+  try {
+    const profile = JSON.parse(snapshot) as Partial<FolioProfile>;
+    return profile.experience?.[index] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function getSavedEducation(snapshot: string, index: number): EducationEntry | null {
+  try {
+    const profile = JSON.parse(snapshot) as Partial<FolioProfile>;
+    return profile.education?.[index] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function getExperienceInitials(entry: ExperienceEntry): string {
+  const source = entry.company || entry.title || "Experience";
+  const words = source
+    .split(/\s+/)
+    .map((word) => word.replace(/[^a-z0-9]/gi, ""))
+    .filter(Boolean);
+
+  if (words.length === 0) {
+    return "EX";
+  }
+
+  return words.slice(0, 2).map((word) => word[0]).join("").toUpperCase();
+}
+
+function formatExperienceRange(entry: ExperienceEntry): string {
+  if (entry.current) {
+    const start = formatTimelineDate(entry.startDate);
+    return start ? `${start} - Present` : "Current";
+  }
+
+  return formatTimelineRange(entry.startDate, entry.endDate);
+}
+
+function formatHoursSaved(seconds: number): string {
+  const hours = seconds / 3600;
+  if (hours === 0) {
+    return "0";
+  }
+
+  if (hours < 10) {
+    return hours.toFixed(1).replace(/\.0$/, "");
+  }
+
+  return Math.round(hours).toLocaleString();
+}
+
+function clampPercent(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function getEntriesCompleteness<T extends object>(entries: T[], keys: Array<keyof T>): number {
+  if (entries.length === 0) {
+    return 0;
+  }
+
+  const completed = entries.reduce((total, entry) => {
+    const filled = keys.filter((key) => String(entry[key] ?? "").trim().length > 0).length;
+    return total + filled / keys.length;
+  }, 0);
+
+  return clampPercent((completed / entries.length) * 100);
+}
+
+function getRecentActivityItems(profile: FolioProfile): Array<{ label: string; time: string; icon: typeof FileText }> {
+  const items = profile.metrics.activityLog.slice(0, 4).map((activity) => ({
+    label: activity.label,
+    time: formatRelativeActivityTime(activity.createdAt),
+    icon: getActivityIcon(activity.kind)
+  }));
+
+  return items;
+}
+
+function getActivityIcon(kind: FolioProfile["metrics"]["activityLog"][number]["kind"]): typeof FileText {
+  if (kind.startsWith("document")) {
+    return FileText;
+  }
+
+  if (kind === "skillAdded") {
+    return Tags;
+  }
+
+  if (kind === "experienceAdded") {
+    return BriefcaseBusiness;
+  }
+
+  if (kind === "formFilled") {
+    return Zap;
+  }
+
+  return CheckCircle2;
+}
+
+function formatRelativeActivityTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "recently";
+  }
+
+  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
   if (seconds < 60) {
-    return `${seconds}s`;
+    return "now";
   }
 
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) {
-    return `${minutes}m`;
+    return `${minutes}m ago`;
   }
 
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
-}
-
-function getTimeSavedComparison(seconds: number): { kind: "books" | "movies"; label: string } {
-  const minutes = Math.max(0, Math.round(seconds / 60));
-  const books = minutes / 360;
-  const movies = minutes / 110;
-
-  if (books >= 1) {
-    return {
-      kind: "books",
-      label: `About reading ${formatComparisonCount(books)} ${books >= 1.5 ? "books" : "book"}.`
-    };
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) {
+    return `${hours}h ago`;
   }
 
-  return {
-    kind: "movies",
-    label: `About watching ${formatComparisonCount(movies)} ${movies >= 1.5 ? "movies" : "movie"}.`
-  };
-}
-
-function formatComparisonCount(value: number): string {
-  if (value < 0.1) {
-    return "0.1";
-  }
-
-  if (value < 10) {
-    return value.toFixed(1).replace(/\.0$/, "");
-  }
-
-  return Math.round(value).toLocaleString();
-}
-
-function getAutofillLevel(fields: number, forms: number): { kicker: string; title: string; badge: string } {
-  const score = fields + forms * 8;
-  const ranks = [
-    { min: 900, title: "Offer letter orbit", badge: "Legend" },
-    { min: 600, title: "Application astronaut", badge: "Cosmic" },
-    { min: 360, title: "Form wizard", badge: "Arcane" },
-    { min: 220, title: "Keyboard escape artist", badge: "Elite" },
-    { min: 120, title: "Application sprinter", badge: "Pro" },
-    { min: 55, title: "Typing dodger", badge: "Rising" },
-    { min: 15, title: "Blue spark rookie", badge: "Fresh" },
-    { min: 0, title: "Ready for launch", badge: "Starter" }
-  ];
-
-  return {
-    kicker: "Automation rank",
-    ...(ranks.find((rank) => score >= rank.min) ?? ranks[ranks.length - 1])
-  };
-}
-
-function getActivityFunFacts(fields: number, forms: number, seconds: number): string[] {
-  if (fields === 0 && forms === 0) {
-    return ["First autofill will start the counter", "No typing saved yet", "Ready when the next form appears"];
-  }
-
-  const minutes = Math.max(0, Math.round(seconds / 60));
-  const keystrokes = fields * 12;
-  const tabsSurvived = Math.max(forms * 3, fields);
-  return [
-    `${keystrokes.toLocaleString()} fewer keystrokes`,
-    `${tabsSurvived.toLocaleString()} fewer tiny form decisions`,
-    `${Math.max(1, Math.round(minutes / 5)).toLocaleString()} focus blocks protected`
-  ];
+  const days = Math.round(hours / 24);
+  return `${days}d ago`;
 }
 
 function formatActivityDate(value: string): string {
@@ -1288,7 +1640,9 @@ async function readResumeDocument(file: File): Promise<ProfileDocument> {
     content,
     contentKind: isPdf ? "dataUrl" : "text",
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
+    usageCount: 0,
+    lastUsedAt: ""
   };
 }
 
@@ -1332,10 +1686,20 @@ function getDocumentTags(documents: ProfileDocument[]): string[] {
   return Array.from(new Set(documents.flatMap((document) => document.tags))).filter(Boolean).sort((a, b) => a.localeCompare(b));
 }
 
-function EducationTimeline({ entries }: { entries: EducationEntry[] }) {
-  const visibleEntries = entries.filter((entry) =>
-    [entry.school, entry.degree, entry.fieldOfStudy, entry.startDate, entry.endDate, entry.description].some((value) => value.trim().length > 0)
-  );
+function EducationTimeline({
+  entries,
+  selectedIndex,
+  onSelect
+}: {
+  entries: EducationEntry[];
+  selectedIndex?: number;
+  onSelect?: (index: number) => void;
+}) {
+  const visibleEntries = entries
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) =>
+      onSelect || [entry.school, entry.degree, entry.fieldOfStudy, entry.startDate, entry.endDate, entry.description].some((value) => value.trim().length > 0)
+    );
 
   if (visibleEntries.length === 0) {
     return (
@@ -1348,10 +1712,10 @@ function EducationTimeline({ entries }: { entries: EducationEntry[] }) {
 
   return (
     <ol className="education-timeline">
-      {visibleEntries.map((entry, index) => (
-        <li key={`${entry.school}-${entry.degree}-${index}`} className="education-timeline-item">
-          <span className="education-timeline-dot" />
-          <div className="education-timeline-content">
+      {visibleEntries.map(({ entry, index }) => {
+        const isSelected = index === selectedIndex;
+        const content = (
+          <>
             <Badge variant="outline" className="education-timeline-date">
               {formatTimelineRange(entry.startDate, entry.endDate)}
             </Badge>
@@ -1359,9 +1723,22 @@ function EducationTimeline({ entries }: { entries: EducationEntry[] }) {
             <span>{entry.school || "School not added yet"}</span>
             {entry.fieldOfStudy && entry.degree && <small>{entry.fieldOfStudy}</small>}
             {entry.description && <p>{entry.description}</p>}
-          </div>
-        </li>
-      ))}
+          </>
+        );
+
+        return (
+          <li key={`education-${index}`} className={isSelected ? "education-timeline-item is-selected" : "education-timeline-item"}>
+            <span className="education-timeline-dot" />
+            {onSelect ? (
+              <button type="button" className="education-timeline-content" onClick={() => onSelect(index)}>
+                {content}
+              </button>
+            ) : (
+              <div className="education-timeline-content">{content}</div>
+            )}
+          </li>
+        );
+      })}
     </ol>
   );
 }
@@ -1384,118 +1761,6 @@ function formatTimelineDate(value: string): string {
 
   const year = value.match(/\b\d{4}\b/)?.[0];
   return year ?? value;
-}
-
-type CustomAnswerRow = CustomAnswer & { rowIndex: number };
-
-function CustomAnswersTable({
-  answers,
-  onUpdate,
-  onRemove
-}: {
-  answers: CustomAnswer[];
-  onUpdate: (index: number, key: keyof CustomAnswer, value: string) => void;
-  onRemove: (index: number) => void;
-}) {
-  const [filter, setFilter] = useState("");
-  const visibleAnswers = useMemo<CustomAnswerRow[]>(() => {
-    const normalizedFilter = filter.trim().toLowerCase();
-    const rows = answers.map((answer, rowIndex) => ({ ...answer, rowIndex }));
-
-    if (!normalizedFilter) {
-      return rows;
-    }
-
-    return rows.filter((answer) =>
-      [answer.question, answer.answer, answer.tags.join(" ")]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedFilter)
-    );
-  }, [answers, filter]);
-
-  return (
-    <div className="custom-answers-table-shell">
-      <div className="custom-answers-table-toolbar">
-        <Input
-          placeholder="Filter answers..."
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-          className="custom-answers-filter-input"
-        />
-      </div>
-      <div className="custom-answers-data-table overflow-hidden rounded-xl border border-border/60">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="custom-answer-question-column">Question</TableHead>
-              <TableHead className="custom-answer-answer-column">Answer</TableHead>
-              <TableHead className="custom-answer-tags-column">Tags</TableHead>
-              <TableHead className="custom-answer-actions-column">
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visibleAnswers.length > 0 ? (
-              visibleAnswers.map((answer) => (
-                <TableRow key={answer.rowIndex}>
-                  <TableCell>
-                    <Input
-                      aria-label={`Question ${answer.rowIndex + 1}`}
-                      value={answer.question}
-                      onChange={(event) => onUpdate(answer.rowIndex, "question", event.target.value)}
-                      placeholder="Question Folio should recognize"
-                      className="custom-answer-question-input"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Textarea
-                      aria-label={`Answer ${answer.rowIndex + 1}`}
-                      value={answer.answer}
-                      onChange={(event) => onUpdate(answer.rowIndex, "answer", event.target.value)}
-                      placeholder="Reusable answer"
-                      className="custom-answer-table-textarea"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      aria-label={`Tags ${answer.rowIndex + 1}`}
-                      value={answer.tags.join(", ")}
-                      onChange={(event) => onUpdate(answer.rowIndex, "tags", event.target.value)}
-                      placeholder="learned, motivation"
-                      className="custom-answer-tags-input"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onRemove(answer.rowIndex)}
-                      disabled={answers.length === 1}
-                      className="custom-answer-remove-button"
-                    >
-                      <Trash2 size={16} />
-                      Remove
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                  No custom answers found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <p className="custom-answers-table-count">
-        Showing {visibleAnswers.length} of {answers.length} saved answers.
-      </p>
-    </div>
-  );
 }
 
 function LocationSelect({

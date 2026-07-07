@@ -14,7 +14,6 @@ export function isProfile(value: unknown): value is FolioProfile {
     Array.isArray(profile.education) &&
     Array.isArray(profile.experience) &&
     Array.isArray(profile.skills) &&
-    Array.isArray(profile.documents) &&
-    Array.isArray(profile.customAnswers)
+    Array.isArray(profile.documents)
   );
 }

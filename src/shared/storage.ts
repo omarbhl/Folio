@@ -1,6 +1,6 @@
-import { defaultProfile } from "./defaultProfile";
+import { APP_VERSION, PROFILE_VERSION, defaultProfile } from "./defaultProfile";
 import { isProfile } from "./profileSchema";
-import type { FolioProfile, ProfileDocument, ThemeMode } from "./types";
+import type { FolioProfile, ProfileActivity, ProfileDocument, ThemeMode } from "./types";
 
 const PROFILE_KEY = "folio.profile";
 const THEME_KEY = "folio.theme";
@@ -99,19 +99,29 @@ function loadProfileFromWebStorage(): FolioProfile | null {
 function normalizeProfile(profile: FolioProfile): FolioProfile {
   const legacyMetrics = profile.metrics as Partial<FolioProfile["metrics"]> & { totalAutofills?: number };
   const totalFormsFilled = legacyMetrics.totalFormsFilled ?? legacyMetrics.totalAutofills ?? defaultProfile.metrics.totalFormsFilled;
+  const now = new Date().toISOString();
+  const metadata = profile.metadata ?? defaultProfile.metadata;
 
   return {
     ...profile,
+    metadata: {
+      ...defaultProfile.metadata,
+      ...metadata,
+      appVersion: APP_VERSION,
+      profileVersion: PROFILE_VERSION,
+      createdAt: metadata.createdAt || now,
+      updatedAt: now
+    },
     metrics: {
       ...defaultProfile.metrics,
       ...(profile.metrics ?? {}),
-      totalFormsFilled
+      totalFormsFilled,
+      activityLog: normalizeActivityLog(profile.metrics?.activityLog ?? [])
     },
     documents: (profile.documents ?? []).map(normalizeDocument),
     preferences: {
       ...defaultProfile.preferences,
-      ...(profile.preferences ?? {}),
-      learnedSiteHosts: Array.from(new Set(profile.preferences?.learnedSiteHosts ?? []))
+      ...(profile.preferences ?? {})
     }
   };
 }
@@ -127,8 +137,16 @@ function normalizeDocument(document: ProfileDocument): ProfileDocument {
     content: document.content ?? "",
     contentKind: document.contentKind ?? "text",
     createdAt,
-    updatedAt: document.updatedAt || createdAt
+    updatedAt: document.updatedAt || createdAt,
+    usageCount: document.usageCount ?? 0,
+    lastUsedAt: document.lastUsedAt ?? ""
   };
+}
+
+function normalizeActivityLog(activityLog: ProfileActivity[]): ProfileActivity[] {
+  return activityLog
+    .filter((entry) => entry && entry.id && entry.kind && entry.label && entry.createdAt)
+    .slice(0, 50);
 }
 
 function makeDocumentId(value: string): string {

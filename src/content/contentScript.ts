@@ -1,16 +1,10 @@
 import { detectFields, getFillableElements, getLabelText, getNearbyText } from "../shared/fieldDetection";
-import { matchFields } from "../shared/fieldMatching";
 import { isCurrentSiteBlocked } from "../shared/blockedSites";
-import { getProfile, saveProfile } from "../shared/storage";
-import type { ContentMessage, DetectedField, DetectedUploadField, FillRequestMatch, FillResult, FolioProfile } from "../shared/types";
+import type { ContentMessage, DetectedUploadField, FillRequestMatch, FillResult } from "../shared/types";
 
 const FOLIO_FILLED_CLASS = "folio-filled";
 const FOLIO_STYLE_ID = "folio-filled-indicator-style";
-const CUSTOM_ANSWER_LEARN_DEBOUNCE_MS = 900;
-const MIN_CUSTOM_ANSWER_LENGTH = 2;
 const indicatorListeners = new WeakSet<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>();
-const learningIgnoredElements = new WeakSet<Element>();
-const learningTimers = new WeakMap<Element, number>();
 
 if (!isCurrentSiteBlocked() && !window.__folioContentScriptLoaded) {
   window.__folioContentScriptLoaded = true;
@@ -42,8 +36,6 @@ if (!isCurrentSiteBlocked() && !window.__folioContentScriptLoaded) {
     return false;
   });
 
-  window.addEventListener("input", scheduleCustomAnswerLearning, true);
-  window.addEventListener("change", scheduleCustomAnswerLearning, true);
 }
 
 declare global {
@@ -79,9 +71,7 @@ function fillFields(matches: FillRequestMatch[], overwriteExisting: boolean): Fi
       continue;
     }
 
-    learningIgnoredElements.add(element);
     const didFill = setElementValue(element, match.value, match.alternatives ?? []);
-    window.setTimeout(() => learningIgnoredElements.delete(element), 0);
     if (!didFill) {
       skippedCount += 1;
       continue;
@@ -93,15 +83,13 @@ function fillFields(matches: FillRequestMatch[], overwriteExisting: boolean): Fi
   restoreScroll();
   requestAnimationFrame(restoreScroll);
   setTimeout(restoreScroll, 0);
-  if (filledCount > 0) {
-    void rememberCurrentSiteForLearning();
-  }
   return { filledCount, skippedCount };
 }
 
 function setElementValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string, alternatives: string[] = []): boolean {
   const restoreScroll = captureScrollPositions(element);
   element.focus({ preventScroll: true });
+  dispatchFocusEvents(element, "focus");
 
   if (element instanceof HTMLSelectElement) {
     const matchedValue = getMatchingSelectValue(element, [value, ...alternatives]);
@@ -110,16 +98,62 @@ function setElementValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLS
       element.blur();
       return false;
     }
-    element.value = matchedValue;
+    setNativeElementValue(element, matchedValue);
   } else {
-    element.value = value;
+    setNativeElementValue(element, value);
   }
 
-  element.dispatchEvent(new Event("input", { bubbles: true }));
-  element.dispatchEvent(new Event("change", { bubbles: true }));
+  dispatchValueCommitEvents(element, value);
   element.blur();
+  dispatchFocusEvents(element, "blur");
   restoreScroll();
   return true;
+}
+
+function setNativeElementValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string): void {
+  const prototype = Object.getPrototypeOf(element) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+  const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+  const ownValueSetter = Object.getOwnPropertyDescriptor(element, "value")?.set;
+  const valueSetter = prototypeValueSetter && ownValueSetter !== prototypeValueSetter ? prototypeValueSetter : ownValueSetter;
+
+  if (valueSetter) {
+    valueSetter.call(element, value);
+    return;
+  }
+
+  element.value = value;
+}
+
+function dispatchValueCommitEvents(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string): void {
+  const eventOptions = { bubbles: true, composed: true };
+
+  if (!(element instanceof HTMLSelectElement)) {
+    element.dispatchEvent(createInputEvent("beforeinput", value, true));
+  }
+
+  element.dispatchEvent(createInputEvent("input", value));
+  element.dispatchEvent(new Event("change", eventOptions));
+}
+
+function createInputEvent(type: "beforeinput" | "input", value: string, cancelable = false): Event {
+  try {
+    return new InputEvent(type, {
+      bubbles: true,
+      cancelable,
+      composed: true,
+      data: value,
+      inputType: "insertReplacementText"
+    });
+  } catch {
+    return new Event(type, { bubbles: true, cancelable, composed: true });
+  }
+}
+
+function dispatchFocusEvents(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, type: "focus" | "blur"): void {
+  const bubblingType = type === "focus" ? "focusin" : "focusout";
+
+  element.dispatchEvent(new FocusEvent(type, { bubbles: false, composed: true }));
+  element.dispatchEvent(new FocusEvent(bubblingType, { bubbles: true, composed: true }));
 }
 
 function markElementFilled(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): void {
@@ -215,7 +249,6 @@ function fillResumeUpload(message: Extract<ContentMessage, { action: "FILL_RESUM
   element.dispatchEvent(new Event("input", { bubbles: true }));
   element.dispatchEvent(new Event("change", { bubbles: true }));
   markElementFilled(element);
-  void rememberCurrentSiteForLearning();
   return { filledCount: 1, skippedCount: 0 };
 }
 
@@ -232,177 +265,6 @@ function makeUploadFile(fileName: string, mimeType: string, content: string, con
   }
 
   return new File([content], fileName, { type: mimeType || "text/plain" });
-}
-
-function scheduleCustomAnswerLearning(event: Event): void {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLTextAreaElement)) {
-    return;
-  }
-
-  if (learningIgnoredElements.has(target) || target.disabled || target.readOnly || isIgnoredLearningInput(target)) {
-    return;
-  }
-
-  window.clearTimeout(learningTimers.get(target));
-  const timer = window.setTimeout(() => void learnCustomAnswer(target), CUSTOM_ANSWER_LEARN_DEBOUNCE_MS);
-  learningTimers.set(target, timer);
-}
-
-async function learnCustomAnswer(element: HTMLInputElement | HTMLTextAreaElement): Promise<void> {
-  const answer = element.value.trim();
-  if (answer.length < MIN_CUSTOM_ANSWER_LENGTH) {
-    return;
-  }
-
-  const field = getDetectedFieldForElement(element);
-  if (!field) {
-    return;
-  }
-
-  const question = getReusableQuestionText(field);
-  if (!question) {
-    return;
-  }
-
-  const profile = await getProfile();
-  if (!profile || !profile.preferences.enabled || !canLearnOnCurrentSite(profile) || isPersonalProfileAnswer(answer, profile) || isPersonalProfileField(field, profile)) {
-    return;
-  }
-
-  const nextProfile = upsertCustomAnswer(profile, question, answer);
-  if (nextProfile !== profile) {
-    await saveProfile(nextProfile);
-  }
-}
-
-function getDetectedFieldForElement(element: HTMLInputElement | HTMLTextAreaElement): DetectedField | null {
-  const elements = getFillableElements();
-  const index = elements.indexOf(element);
-  if (index < 0) {
-    return null;
-  }
-
-  return detectFields().find((field) => field.index === index) ?? null;
-}
-
-function getReusableQuestionText(field: DetectedField): string {
-  const candidates = [field.labelText, field.ariaLabel, field.placeholder, field.nearbyText]
-    .map(cleanQuestionText)
-    .filter(Boolean);
-  const question = candidates.find((candidate) => isLikelyReusableQuestion(candidate)) ?? "";
-  return question;
-}
-
-function isLikelyReusableQuestion(value: string): boolean {
-  const normalized = normalizeQuestion(value);
-  if (normalized.length < 8 || normalized.split(" ").length < 2) {
-    return false;
-  }
-
-  if (isPersonalQuestionText(normalized)) {
-    return false;
-  }
-
-  return value.includes("?") || normalized.length >= 18;
-}
-
-function isPersonalProfileField(field: DetectedField, profile: FolioProfile): boolean {
-  return matchFields([field], profile).some((match) => match.profilePath.startsWith("personal."));
-}
-
-function isPersonalProfileAnswer(answer: string, profile: FolioProfile): boolean {
-  const normalizedAnswer = normalizeQuestion(answer);
-  return Object.values(profile.personal).some((value) => value.trim().length > 0 && normalizeQuestion(value) === normalizedAnswer);
-}
-
-function upsertCustomAnswer(profile: FolioProfile, question: string, answer: string): FolioProfile {
-  const normalizedQuestion = normalizeQuestion(question);
-  const existingIndex = profile.customAnswers.findIndex((entry) => normalizeQuestion(entry.question) === normalizedQuestion);
-
-  if (existingIndex >= 0) {
-    const existing = profile.customAnswers[existingIndex];
-    if (existing.answer.trim() === answer) {
-      return profile;
-    }
-
-    return {
-      ...profile,
-      customAnswers: profile.customAnswers.map((entry, index) =>
-        index === existingIndex
-          ? { ...entry, question, answer, tags: Array.from(new Set([...entry.tags, "learned"])) }
-          : entry
-      )
-    };
-  }
-
-  return {
-    ...profile,
-    customAnswers: [...profile.customAnswers, { question, answer, tags: ["learned"] }]
-  };
-}
-
-function cleanQuestionText(value: string): string {
-  return value
-    .replace(/\*/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 180);
-}
-
-function normalizeQuestion(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/['’`´]/g, " ")
-    .replace(/[_/-]+/g, " ")
-    .replace(/[^a-z0-9? ]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function isPersonalQuestionText(normalized: string): boolean {
-  return /\b(first name|last name|full name|name|email|phone|telephone|address|city|country|postal|zip|linkedin|github|portfolio|website|resume|cv|cover letter|password|captcha)\b/.test(
-    normalized
-  );
-}
-
-function isIgnoredLearningInput(element: HTMLInputElement | HTMLTextAreaElement): boolean {
-  if (element instanceof HTMLTextAreaElement) {
-    return false;
-  }
-
-  const type = element.type.toLowerCase();
-  return ["button", "checkbox", "color", "date", "datetime-local", "email", "file", "hidden", "image", "month", "number", "password", "radio", "range", "reset", "search", "submit", "tel", "time", "url", "week"].includes(type);
-}
-
-function canLearnOnCurrentSite(profile: FolioProfile): boolean {
-  return profile.preferences.learnedSiteHosts.includes(normalizeHostname(window.location.hostname));
-}
-
-async function rememberCurrentSiteForLearning(): Promise<void> {
-  const profile = await getProfile();
-  if (!profile || !profile.preferences.enabled) {
-    return;
-  }
-
-  const hostname = normalizeHostname(window.location.hostname);
-  if (!hostname || profile.preferences.learnedSiteHosts.includes(hostname)) {
-    return;
-  }
-
-  await saveProfile({
-    ...profile,
-    preferences: {
-      ...profile.preferences,
-      learnedSiteHosts: [...profile.preferences.learnedSiteHosts, hostname]
-    }
-  });
-}
-
-function normalizeHostname(hostname: string): string {
-  return hostname.toLowerCase().replace(/^www\./, "");
 }
 
 function captureScrollPositions(element?: Element): () => void {

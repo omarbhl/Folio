@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Folio",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Customize once. Apply everywhere.",
   "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["https://api.github.com/*"],
   "action": {
     "default_title": "Folio",
     "default_popup": "src/popup/index.html",
