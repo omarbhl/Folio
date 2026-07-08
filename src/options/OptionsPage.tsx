@@ -67,6 +67,13 @@ const personalFields: Array<{ key: keyof PersonalProfile; label: string; type?: 
   { key: "portfolio", label: "Portfolio", type: "url" }
 ];
 
+const starterPersonalFields: Array<{ key: keyof PersonalProfile; label: string; type?: string; placeholder?: string }> = [
+  { key: "fullName", label: "Full name", placeholder: "Jane Doe" },
+  { key: "email", label: "Email", type: "email", placeholder: "jane@example.com" },
+  { key: "phone", label: "Phone", type: "tel", placeholder: "+1 555 0123" },
+  { key: "linkedin", label: "LinkedIn", type: "url", placeholder: "https://linkedin.com/in/..." }
+];
+
 const emptyEducation: EducationEntry = {
   school: "",
   degree: "",
@@ -122,6 +129,7 @@ type LocationDataApi = {
 
 export function OptionsPage() {
   const [profile, setProfile] = useState<FolioProfile>(defaultProfile);
+  const [hasLoadedProfile, setHasLoadedProfile] = useState(false);
   const [hasSavedProfile, setHasSavedProfile] = useState(false);
   const [skillInput, setSkillInput] = useState("");
   const [savedSnapshot, setSavedSnapshot] = useState(JSON.stringify(defaultProfile));
@@ -217,6 +225,7 @@ export function OptionsPage() {
   const onboardingCompleteCount = onboardingSteps.filter((step) => step.complete).length;
   const onboardingProgress = Math.round((onboardingCompleteCount / onboardingSteps.length) * 100);
   const shouldShowOnboarding = onboardingProgress < 100;
+  const isFirstRun = hasLoadedProfile && !hasSavedProfile;
   const overviewStats = useMemo(
     () => [
       {
@@ -274,15 +283,26 @@ export function OptionsPage() {
   const isSelectedExperienceDirty = JSON.stringify(selectedExperience) !== JSON.stringify(savedSelectedExperience ?? null);
   const activeItem = navItems.find((item) => item.id === activeSection) ?? navItems[0];
   useEffect(() => {
-    hasProfile().then(setHasSavedProfile);
-    getProfile().then((storedProfile) => {
+    let cancelled = false;
+
+    Promise.all([hasProfile(), getProfile()]).then(([profileExists, storedProfile]) => {
+      if (cancelled) {
+        return;
+      }
+
+      setHasSavedProfile(profileExists);
       if (storedProfile) {
         setProfile(storedProfile);
         setSavedSnapshot(JSON.stringify(storedProfile));
       } else {
         setSavedSnapshot(JSON.stringify(defaultProfile));
       }
+      setHasLoadedProfile(true);
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -647,13 +667,15 @@ export function OptionsPage() {
           </div>
 
           <div className="topbar-actions">
-            <Button asChild variant="outline" className="github-star-button">
-              <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" aria-label="Star omarbhl/Folio on GitHub">
-                <Github size={16} />
-                <span>Star Folio</span>
-                <strong>{githubStarCount === null ? "..." : formatCompactCount(githubStarCount)}</strong>
-              </a>
-            </Button>
+            {!isFirstRun && (
+              <Button asChild variant="outline" className="github-star-button">
+                <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" aria-label="Star omarbhl/Folio on GitHub">
+                  <Github size={16} />
+                  <span>Star Folio</span>
+                  <strong>{githubStarCount === null ? "..." : formatCompactCount(githubStarCount)}</strong>
+                </a>
+              </Button>
+            )}
             <ToggleGroup
               type="single"
               value={themeMode}
@@ -677,6 +699,95 @@ export function OptionsPage() {
           </div>
         </header>
 
+        {isFirstRun ? (
+          <main className="first-run-shell" aria-labelledby="first-run-title">
+            <section className="first-run-hero">
+              <div>
+                <p className="eyebrow">Quick setup</p>
+                <h1 id="first-run-title">Start with the essentials.</h1>
+                <p>Add the few details Folio needs first. The full dashboard unlocks after you save.</p>
+              </div>
+              <div className="first-run-progress">
+                <div>
+                  <span>{onboardingCompleteCount} of {onboardingSteps.length} ready</span>
+                  <strong>{onboardingProgress}%</strong>
+                </div>
+                <Progress value={onboardingProgress} className="h-1.5" />
+              </div>
+            </section>
+
+            <section className="first-run-grid">
+              <Card className="first-run-card">
+                <CardHeader>
+                  <CardTitle>
+                    <UserRound size={18} />
+                    Your basics
+                  </CardTitle>
+                  <CardDescription>Used for the fields applications ask for most.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="first-run-fields">
+                    {starterPersonalFields.map((field) => (
+                      <div className="space-y-1.5" key={field.key}>
+                        <Label htmlFor={`starter-${field.key}`}>{field.label}</Label>
+                        <Input
+                          id={`starter-${field.key}`}
+                          type={field.type ?? "text"}
+                          value={profile.personal[field.key]}
+                          onChange={(event) => updatePersonal(field.key, event.target.value)}
+                          placeholder={field.placeholder}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="first-run-card">
+                <CardHeader>
+                  <CardTitle>
+                    <FilePlus2 size={18} />
+                    Resume
+                  </CardTitle>
+                  <CardDescription>Optional, but useful when forms ask for an upload.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="first-run-upload">
+                    <Button asChild variant={hasUsableResume ? "secondary" : "outline"}>
+                      <label className="cursor-pointer">
+                        <Upload size={16} />
+                        {hasUsableResume ? "Replace resume" : "Upload resume"}
+                        <input type="file" accept=".txt,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf" multiple onChange={handleFilesUpload} hidden />
+                      </label>
+                    </Button>
+                    <div>
+                      <strong>{resumeDocuments[0]?.name || resumeDocuments[0]?.fileName || "No resume yet"}</strong>
+                      <span>{hasUsableResume ? "Stored locally in your profile." : "You can add this later from Documents."}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="first-run-save-row">
+                <div>
+                  <ShieldCheck size={17} />
+                  <span>Folio stores this on your device and scans only when you ask.</span>
+                </div>
+                <Button type="button" className="first-run-save-button" onClick={() => void handleSave()} disabled={!isDirty}>
+                  <Save size={16} />
+                  Save and open Folio
+                </Button>
+              </div>
+            </section>
+
+            {status && (
+              <div className="status" role="status">
+                {status}
+              </div>
+            )}
+          </main>
+        ) : (
+          <>
         <div className="settings-page-heading">
           <div>
             <p className="eyebrow">{activeItem.label}</p>
@@ -1241,7 +1352,7 @@ export function OptionsPage() {
                           placeholder="Computer Science"
                         />
                       </div>
-                      <YearField
+                      <DateField
                         id="education-selected-startDate"
                         label="Start date"
                         value={selectedEducation.startDate}
@@ -1461,6 +1572,8 @@ export function OptionsPage() {
             )}
           </div>
         </main>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1487,7 +1600,7 @@ function formatCompactCount(value: number): string {
 }
 
 function getStarterContactProgress(profile: FolioProfile): number {
-  const fields: Array<keyof PersonalProfile> = ["firstName", "lastName", "fullName", "email", "phone"];
+  const fields: Array<keyof PersonalProfile> = ["fullName", "email", "phone"];
   const filled = fields.filter((field) => profile.personal[field].trim().length > 0).length;
   return Math.round((filled / fields.length) * 100);
 }
