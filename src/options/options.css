@@ -716,6 +716,12 @@ button:disabled {
   min-height: 560px;
 }
 
+.education-selector-card,
+.experience-list-card {
+  display: grid;
+  grid-template-rows: 126px minmax(0, 1fr);
+}
+
 .education-list-header [data-slot="card-title"] {
   align-items: center;
   display: flex;
@@ -727,8 +733,22 @@ button:disabled {
 }
 
 .education-selector-card [data-slot="card-content"] {
-  align-content: start;
+  display: grid;
   gap: 18px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+.timeline-selector-scroll {
+  margin-inline: calc(var(--card-spacing) * -1);
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px var(--card-spacing) 0;
+  scrollbar-width: thin;
+}
+
+.timeline-selector-scroll .education-timeline {
+  min-height: 160px;
 }
 
 .education-timeline {
@@ -953,8 +973,10 @@ button.education-timeline-content:hover {
 }
 
 .experience-list-card [data-slot="card-content"] {
-  align-content: start;
+  display: grid;
   gap: 18px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
 }
 
 .experience-current-badge {
@@ -1727,6 +1749,16 @@ button.education-timeline-content:hover {
   .experience-list-card,
   .experience-editor-card {
     min-height: 0;
+  }
+
+  .education-selector-card,
+  .experience-list-card {
+    grid-template-rows: auto auto;
+  }
+
+  .timeline-selector-scroll {
+    max-height: none;
+    overflow: visible;
   }
 }
 

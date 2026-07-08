@@ -207,12 +207,12 @@ export function OptionsPage() {
       {
         label: "Save your profile",
         description: "Store everything locally before opening the popup.",
-        complete: hasSavedProfile && !isDirty,
+        complete: hasSavedProfile,
         section: activeSection,
         icon: Save
       }
     ],
-    [activeSection, hasSavedProfile, hasStarterContact, hasUsableResume, isDirty]
+    [activeSection, hasSavedProfile, hasStarterContact, hasUsableResume]
   );
   const onboardingCompleteCount = onboardingSteps.filter((step) => step.complete).length;
   const onboardingProgress = Math.round((onboardingCompleteCount / onboardingSteps.length) * 100);
@@ -1191,7 +1191,9 @@ export function OptionsPage() {
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    <EducationTimeline entries={profile.education} selectedIndex={selectedEducationIndex} onSelect={setSelectedEducationIndex} />
+                    <div className="timeline-selector-scroll">
+                      <EducationTimeline entries={profile.education} selectedIndex={selectedEducationIndex} onSelect={setSelectedEducationIndex} />
+                    </div>
                     <div className="education-tip">
                       <Sparkles size={15} />
                       <p>Keep your newest or most relevant education easy to find. Folio uses this when matching school and degree fields.</p>
@@ -1297,27 +1299,29 @@ export function OptionsPage() {
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    <ol className="education-timeline experience-timeline">
-                      {profile.experience.map((entry, index) => {
-                        const isSelected = index === selectedExperienceIndex;
-                        return (
-                          <li
-                            key={`experience-${index}`}
-                            className={isSelected ? "education-timeline-item is-selected" : "education-timeline-item"}
-                          >
-                            <span className="education-timeline-dot" />
-                            <button type="button" className="education-timeline-content" onClick={() => setSelectedExperienceIndex(index)}>
-                              <Badge variant="outline" className="education-timeline-date">
-                                {formatExperienceRange(entry)}
-                              </Badge>
-                              <strong>{entry.title || "Untitled role"}</strong>
-                              <span>{entry.company || "Company not set"}</span>
-                              {entry.location && <small>{entry.location}</small>}
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ol>
+                    <div className="timeline-selector-scroll">
+                      <ol className="education-timeline experience-timeline">
+                        {profile.experience.map((entry, index) => {
+                          const isSelected = index === selectedExperienceIndex;
+                          return (
+                            <li
+                              key={`experience-${index}`}
+                              className={isSelected ? "education-timeline-item is-selected" : "education-timeline-item"}
+                            >
+                              <span className="education-timeline-dot" />
+                              <button type="button" className="education-timeline-content" onClick={() => setSelectedExperienceIndex(index)}>
+                                <Badge variant="outline" className="education-timeline-date">
+                                  {formatExperienceRange(entry)}
+                                </Badge>
+                                <strong>{entry.title || "Untitled role"}</strong>
+                                <span>{entry.company || "Company not set"}</span>
+                                {entry.location && <small>{entry.location}</small>}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
                     <div className="experience-tip">
                       <Sparkles size={15} />
                       <p>List your most relevant experience first. Focus on impact, not just duties.</p>
@@ -1821,7 +1825,7 @@ function DateField({
       <Input
         id={id}
         inputMode="numeric"
-        placeholder="DD/MM/YYYY"
+        placeholder="MM/YYYY"
         value={formatDateInputValue(value)}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
@@ -1850,7 +1854,7 @@ function YearField({
         id={id}
         inputMode="numeric"
         maxLength={4}
-        placeholder="YYYY"
+        placeholder="MM/YYYY"
         value={formatYearInputValue(value)}
         onChange={(event) => onChange(event.target.value.replace(/\D/g, "").slice(0, 4))}
         disabled={disabled}
