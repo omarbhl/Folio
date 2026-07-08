@@ -774,7 +774,7 @@ export function OptionsPage() {
                   <span>Folio stores this on your device and scans only when you ask.</span>
                 </div>
                 <Button type="button" className="first-run-save-button" onClick={() => void handleSave()} disabled={!isDirty}>
-                  <Save size={16} />
+                  <Save size={16} color="white" />
                   Save and open Folio
                 </Button>
               </div>
