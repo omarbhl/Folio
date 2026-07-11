@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Toaster } from "@/components/ui/sonner";
@@ -454,7 +455,16 @@ export function OptionsPage() {
   }, [selectedDocumentId]);
 
   function updatePersonal(key: keyof PersonalProfile, value: string) {
-    setProfile((current) => ({ ...current, personal: { ...current.personal, [key]: value } }));
+    setProfile((current) => {
+      const personal = { ...current.personal, [key]: value };
+      if (key === "firstName" || key === "lastName") {
+        const previousGeneratedName = [current.personal.firstName, current.personal.lastName].filter(Boolean).join(" ").trim();
+        if (!current.personal.fullName.trim() || current.personal.fullName.trim() === previousGeneratedName) {
+          personal.fullName = [personal.firstName, personal.lastName].filter(Boolean).join(" ").trim();
+        }
+      }
+      return { ...current, personal };
+    });
   }
 
   function updateCountry(value: string) {
@@ -743,10 +753,12 @@ export function OptionsPage() {
                 <Laptop size={14} />
               </ToggleGroupItem>
             </ToggleGroup>
-            <Button onClick={handleSave} disabled={!isDirty}>
-              <Save size={16} />
-              {isDirty ? "Save changes" : "Saved"}
-            </Button>
+            {!isFirstRun && (
+              <Button onClick={handleSave} disabled={!isDirty}>
+                <Save size={16} />
+                {isDirty ? "Save changes" : "Saved"}
+              </Button>
+            )}
           </div>
         </header>
 
@@ -827,25 +839,18 @@ export function OptionsPage() {
           </section>
         )}
 
-        <nav className="settings-tabs" aria-label="Settings categories">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.id;
-            return (
-              <Button
-                key={item.id}
-                type="button"
-                variant="ghost"
-                onClick={() => setActiveSection(item.id)}
-                aria-current={isActive ? "page" : undefined}
-                data-state={isActive ? "on" : "off"}
-              >
-                <Icon size={15} />
-                {item.label}
-              </Button>
-            );
-          })}
-        </nav>
+        <Tabs value={activeSection} onValueChange={(value) => setActiveSection(value as SectionId)}>
+          <TabsList className="settings-tabs" aria-label="Settings categories">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <TabsTrigger key={item.id} value={item.id}>
+                  <Icon size={15} />
+                  {item.label}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
 
         {status && (
           <div className="status" role="status">
@@ -1543,7 +1548,8 @@ export function OptionsPage() {
               </div>
             )}
           </div>
-        </main>
+          </main>
+        </Tabs>
           </>
         )}
       <Toaster position="bottom-right" closeButton />
@@ -1572,7 +1578,7 @@ function formatCompactCount(value: number): string {
 }
 
 function getStarterContactProgress(profile: FolioProfile): number {
-  const fields: Array<keyof PersonalProfile> = ["fullName", "email", "phone"];
+  const fields: Array<keyof PersonalProfile> = ["firstName", "lastName", "email"];
   const filled = fields.filter((field) => profile.personal[field].trim().length > 0).length;
   return Math.round((filled / fields.length) * 100);
 }

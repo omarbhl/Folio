@@ -238,18 +238,21 @@ body {
   overflow-x: auto;
   padding: 0.3rem;
   scrollbar-width: none;
+  width: 100%;
 }
 
 .settings-tabs::-webkit-scrollbar {
   display: none;
 }
 
-.settings-tabs [data-slot="button"] {
+.settings-tabs [data-slot="tabs-trigger"] {
   color: var(--muted-foreground);
   flex: 0 0 auto;
+  min-height: 2rem;
+  padding-inline: 0.75rem;
 }
 
-.settings-tabs [data-state="on"] {
+.settings-tabs [data-slot="tabs-trigger"][data-active] {
   background: var(--primary);
   color: var(--primary-foreground);
   box-shadow: var(--shadow-sm);
