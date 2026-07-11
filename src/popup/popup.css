@@ -132,7 +132,10 @@ body,
 }
 
 .popup-state-view.is-off .popup-hero {
-  height: 400px;
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  height: 355px;
 }
 
 .popup-state-view:has(.resume-upload-panel) .popup-hero {
@@ -177,14 +180,34 @@ body,
 
 .popup-state-view.is-off .popup-mascot-stage img.is-sleeping {
   height: 280px;
-  left: -5px;
-  top: 55px;
-  transform: none;
+  left: 50%;
+  top: -5px;
+  transform: translateX(-50%);
   width: 187px;
 }
 
 .popup-state-view.is-off .popup-state-copy {
-  transform: translate(-8px, -27px);
+  align-items: center;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  padding: 0 18px;
+  text-align: center;
+  transform: none;
+}
+
+.popup-state-view.is-off .popup-mascot-stage {
+  flex: 0 0 180px;
+  width: 100%;
+}
+
+.popup-state-view.is-off .popup-active-pill {
+  margin: 0 0 12px;
+}
+
+.popup-state-view.is-off .popup-state-copy p {
+  margin-inline: auto;
+  max-width: 240px;
 }
 
 .popup-state-copy {
