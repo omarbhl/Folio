@@ -279,14 +279,6 @@ export function OptionsPage() {
     ],
     [profile.education, profile.experience, profile.preferences.enabled, profile.skills.length, profileCompleteness, reusableDocuments.length]
   );
-  const mostUsedDocuments = useMemo(
-    () =>
-      reusableDocuments
-        .sort((first, second) => second.usageCount - first.usageCount)
-        .slice(0, 5),
-    [reusableDocuments]
-  );
-  const recentActivity = useMemo(() => getRecentActivityItems(profile), [profile]);
   const selectedEducation = profile.education[selectedEducationIndex] ?? profile.education[0] ?? emptyEducation;
   const savedSelectedEducation = useMemo(() => getSavedEducation(savedSnapshot, selectedEducationIndex), [savedSnapshot, selectedEducationIndex]);
   const isSelectedEducationDirty = JSON.stringify(selectedEducation) !== JSON.stringify(savedSelectedEducation ?? null);
@@ -926,102 +918,6 @@ export function OptionsPage() {
                     </CardContent>
                   </Card>
 
-                  <Card className="overview-panel">
-                    <CardHeader className="overview-panel-header">
-                      <CardTitle>Most used documents</CardTitle>
-                      <Button type="button" variant="outline" size="xs" onClick={() => setActiveSection("files")}>
-                        View all
-                      </Button>
-                    </CardHeader>
-                    <CardContent>
-                      <ol className="overview-document-list">
-                        {mostUsedDocuments.length > 0 ? (
-                          mostUsedDocuments.map((document) => (
-                            <li key={document.id}>
-                              <FileText size={16} />
-                              <strong>{document.fileName || document.name}</strong>
-                              <small>{document.usageCount} uses</small>
-                            </li>
-                          ))
-                        ) : (
-                          <li className="overview-empty-row">No documents uploaded yet.</li>
-                        )}
-                      </ol>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="overview-panel">
-                    <CardHeader className="overview-panel-header">
-                      <CardTitle>Recent activity</CardTitle>
-                      <Button type="button" variant="outline" size="xs" onClick={() => setActiveSection("overview")}>
-                        View all
-                      </Button>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="overview-activity-list">
-                        {recentActivity.length > 0 ? (
-                          recentActivity.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                              <div key={`${item.label}-${item.time}`}>
-                                <Icon size={15} />
-                                <span>{item.label}</span>
-                                <small>{item.time}</small>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <p className="overview-empty-row">No activity recorded yet.</p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="overview-panel">
-                    <CardHeader>
-                      <CardTitle>Quick actions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="overview-action-grid">
-                        <button type="button" onClick={() => setActiveSection("ai")}>
-                          <Sparkles size={18} />
-                          <span>
-                            <strong>AI</strong>
-                            <small>Coming soon</small>
-                          </span>
-                        </button>
-                        <button type="button" onClick={() => setActiveSection("files")}>
-                          <Upload size={18} />
-                          <span>
-                            <strong>Upload document</strong>
-                            <small>Add your files</small>
-                          </span>
-                        </button>
-                        <button type="button" onClick={() => setActiveSection("personal")}>
-                          <UserRound size={18} />
-                          <span>
-                            <strong>Edit profile</strong>
-                            <small>Update your info</small>
-                          </span>
-                        </button>
-                        <button type="button" onClick={() => setActiveSection("data")}>
-                          <SlidersHorizontal size={18} />
-                          <span>
-                            <strong>Settings</strong>
-                            <small>Manage controls</small>
-                          </span>
-                        </button>
-                        <button type="button" className="overview-action-wide" onClick={handleExport}>
-                          <FileDown size={18} />
-                          <span>
-                            <strong>Export profile</strong>
-                            <small>Backup your data</small>
-                          </span>
-                          <ChevronRight size={17} />
-                        </button>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               </div>
             )}
@@ -1638,61 +1534,6 @@ function getEntriesCompleteness<T extends object>(entries: T[], keys: Array<keyo
   }, 0);
 
   return clampPercent((completed / entries.length) * 100);
-}
-
-function getRecentActivityItems(profile: FolioProfile): Array<{ label: string; time: string; icon: typeof FileText }> {
-  const items = profile.metrics.activityLog.slice(0, 4).map((activity) => ({
-    label: activity.label,
-    time: formatRelativeActivityTime(activity.createdAt),
-    icon: getActivityIcon(activity.kind)
-  }));
-
-  return items;
-}
-
-function getActivityIcon(kind: FolioProfile["metrics"]["activityLog"][number]["kind"]): typeof FileText {
-  if (kind.startsWith("document")) {
-    return FileText;
-  }
-
-  if (kind === "skillAdded") {
-    return Tags;
-  }
-
-  if (kind === "experienceAdded") {
-    return BriefcaseBusiness;
-  }
-
-  if (kind === "formFilled") {
-    return Zap;
-  }
-
-  return CheckCircle2;
-}
-
-function formatRelativeActivityTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "recently";
-  }
-
-  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
-  if (seconds < 60) {
-    return "now";
-  }
-
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) {
-    return `${minutes}m ago`;
-  }
-
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) {
-    return `${hours}h ago`;
-  }
-
-  const days = Math.round(hours / 24);
-  return `${days}d ago`;
 }
 
 function formatActivityDate(value: string): string {
