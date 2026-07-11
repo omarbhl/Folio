@@ -229,7 +229,6 @@ export function Popup() {
       const resumeMessage = resumeResult.filledCount > 0 ? ` Attached ${selectedResume?.fileName || selectedResume?.name}.` : "";
       setStatus(`Filled ${totalFilled} item${totalFilled === 1 ? "" : "s"}.${resumeMessage}`);
       setFillState("success");
-      toast.success("Form updated", { description: `${totalFilled} item${totalFilled === 1 ? "" : "s"} filled. Review the page before submitting.` });
     } catch (error) {
       setStatus("Folio could not complete this fill. Your saved profile was not changed.");
       setFillState("error");
@@ -476,9 +475,9 @@ export function Popup() {
             </Button>
           </div>
 
-          {(fillState === "success" || fillState === "error") && (
-            <div className={fillState === "success" ? "popup-inline-feedback is-success" : "popup-inline-feedback is-error"} role={fillState === "error" ? "alert" : "status"}>
-              {fillState === "success" ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+          {fillState === "error" && (
+            <div className="popup-inline-feedback is-error" role="alert">
+              <AlertCircle size={15} />
               <span>{status}</span>
             </div>
           )}
