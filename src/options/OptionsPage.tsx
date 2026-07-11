@@ -824,7 +824,7 @@ export function OptionsPage() {
           </section>
         )}
 
-        <Tabs className="settings-workspace" value={activeSection} onValueChange={(value) => setActiveSection(value as SectionId)}>
+        <Tabs className="settings-workspace" orientation="vertical" value={activeSection} onValueChange={(value) => setActiveSection(value as SectionId)}>
           <TabsList className="settings-tabs" aria-label="Settings categories">
             {navItems.map((item) => {
               const Icon = item.icon;
