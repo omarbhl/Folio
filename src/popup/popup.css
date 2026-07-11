@@ -14,9 +14,9 @@ body,
 }
 
 .popup-panel {
+  height: 590px;
   isolation: isolate;
-  min-height: 590px;
-  overflow: hidden auto;
+  overflow: hidden;
   padding: 18px 18px 16px;
   position: relative;
 }
@@ -129,6 +129,24 @@ body,
   height: 225px;
   margin: 0 -18px;
   position: relative;
+}
+
+.popup-state-view.is-off .popup-hero {
+  height: 400px;
+}
+
+.popup-state-view:has(.resume-upload-panel) .popup-hero {
+  height: 150px;
+}
+
+.popup-state-view:has(.resume-upload-panel) .popup-mascot-stage img {
+  height: 145px;
+  top: 10px;
+  width: 145px;
+}
+
+.popup-state-view:has(.resume-upload-panel) .popup-state-copy {
+  padding-top: 12px;
 }
 
 .popup-mascot-stage {
@@ -526,38 +544,4 @@ body,
 @keyframes popup-state-enter {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-@media (max-width: 340px) {
-  html,
-  body,
-  #root {
-    min-width: 320px;
-    width: 320px;
-  }
-
-  .popup-panel {
-    padding-inline: 14px;
-  }
-
-  .popup-header-actions {
-    gap: 6px;
-  }
-
-  .popup-hero {
-    grid-template-columns: 49% 51%;
-    margin-inline: -14px;
-  }
-
-  .popup-mascot-stage img {
-    left: -18px;
-  }
-
-  .popup-state-view.is-off .popup-mascot-stage img.is-sleeping {
-    left: -15px;
-  }
-
-  .popup-state-copy h2 {
-    font-size: 22px;
-  }
 }

@@ -396,6 +396,7 @@ export function Popup() {
           </div>
         </section>
 
+        {isEnabled && <>
         <button
           type="button"
           className="popup-detection-card"
@@ -460,6 +461,7 @@ export function Popup() {
             </label>
             <Switch id="overwrite-existing" checked={overwriteExisting} onCheckedChange={setOverwriteExisting} aria-label="Replace existing answers" />
           </div>
+        </>}
 
           <div className="popup-actions">
             <Button
