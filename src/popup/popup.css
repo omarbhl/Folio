@@ -1,8 +1,10 @@
 html,
 body,
 #root {
+  height: auto;
   margin: 0;
   max-width: 360px;
+  min-height: 0;
   min-width: 360px;
   overflow: hidden;
   width: 360px;
