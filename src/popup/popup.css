@@ -9,16 +9,29 @@ body,
 }
 
 .popup-shell {
-  background:
-    radial-gradient(circle at 100% 12%, color-mix(in srgb, var(--primary) 20%, transparent), transparent 30%),
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--brand-violet) 10%, transparent), transparent 32%),
-    var(--background);
+  background: var(--background);
+  color: var(--foreground);
 }
 
 .popup-panel {
-  min-height: 440px;
-  padding: 1rem;
+  isolation: isolate;
+  min-height: 590px;
+  overflow: hidden auto;
+  padding: 18px 18px 16px;
   position: relative;
+}
+
+.popup-space-background {
+  background-image:
+    linear-gradient(to bottom, color-mix(in srgb, var(--background) 16%, transparent), color-mix(in srgb, var(--background) 56%, transparent)),
+    url("/assets/folio-space-background.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
 }
 
 .popup-header,
@@ -27,50 +40,60 @@ body,
 .popup-privacy,
 .popup-detection-card,
 .popup-overwrite-control,
-.popup-inline-feedback {
+.popup-inline-feedback,
+.popup-active-pill,
+.popup-card-icon {
   align-items: center;
   display: flex;
 }
 
 .popup-header {
+  height: 42px;
   justify-content: space-between;
+  position: relative;
+  z-index: 2;
 }
 
 .popup-brand {
-  gap: 0.55rem;
+  gap: 10px;
 }
 
 .popup-mark {
-  border-radius: var(--radius-md);
-  height: 2rem;
-  width: 2rem;
+  border-radius: 10px;
+  height: 34px;
+  width: 34px;
 }
 
 .popup-mark.hero {
-  height: 3rem;
-  width: 3rem;
+  height: 60px;
+  width: 60px;
 }
 
 .popup-brand h1 {
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-size: 22px;
+  font-weight: 720;
+  letter-spacing: -0.04em;
   margin: 0;
 }
 
 .popup-header-actions {
-  gap: 0.3rem;
+  gap: 10px;
 }
 
 .popup-icon-button {
-  background: color-mix(in srgb, var(--card) 72%, transparent);
+  background: color-mix(in srgb, var(--card) 42%, transparent);
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--muted-foreground);
-  height: 2rem;
+  height: 34px;
   padding: 0;
   transition: color var(--motion-base) var(--ease-standard), background-color var(--motion-base) var(--ease-standard), border-color var(--motion-base) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
-  width: 2rem;
+  width: 34px;
+}
+
+.popup-icon-button svg {
+  height: 17px;
+  width: 17px;
 }
 
 .popup-icon-button:hover {
@@ -83,150 +106,258 @@ body,
 }
 
 .popup-power-button.is-on {
-  border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+  border-color: var(--success);
+  box-shadow: inset 0 0 16px color-mix(in srgb, var(--success) 8%, transparent), 0 0 14px color-mix(in srgb, var(--success) 12%, transparent);
   color: var(--success);
 }
 
 .popup-power-button.is-off {
-  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
-  border-color: color-mix(in srgb, var(--destructive) 42%, var(--border));
+  border-color: color-mix(in srgb, var(--destructive) 55%, var(--border));
   color: var(--destructive);
 }
 
 .popup-state-view {
   animation: popup-state-enter var(--motion-slow) var(--ease-emphasized) both;
   display: grid;
-  gap: 0.8rem;
-  justify-items: center;
-  padding: 1.25rem 0 0.75rem;
-  text-align: center;
-}
-
-.popup-state-icon {
-  align-items: center;
-  background: color-mix(in srgb, var(--primary) 12%, var(--card));
-  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
-  border-radius: 1.5rem;
-  color: var(--primary);
-  display: flex;
-  height: 5.5rem;
-  justify-content: center;
-  margin-top: 0.25rem;
+  gap: 9px;
   position: relative;
-  width: 5.5rem;
 }
 
-.popup-state-view.is-off .popup-state-icon {
-  background: color-mix(in srgb, var(--destructive) 10%, var(--card));
-  border-color: color-mix(in srgb, var(--destructive) 32%, var(--border));
-  color: var(--destructive);
+.popup-hero {
+  display: grid;
+  grid-template-columns: 49% 51%;
+  height: 225px;
+  margin: 0 -18px;
+  position: relative;
 }
 
-.popup-state-copy h2 {
-  font-size: 1.45rem;
-  letter-spacing: -0.035em;
-  margin: 0;
+.popup-mascot-stage {
+  align-self: stretch;
+  overflow: visible;
+  position: relative;
 }
 
+.popup-mascot-stage::after {
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand-violet) 34%, transparent), transparent 68%);
+  content: "";
+  filter: blur(12px);
+  inset: 44% 0 1% -8%;
+  position: absolute;
+  z-index: -1;
+}
+
+.popup-mascot-stage img {
+  height: 190px;
+  left: -4px;
+  max-width: none;
+  object-fit: contain;
+  position: absolute;
+  top: 40px;
+  transform: rotate(-2deg);
+  width: 190px;
+}
+
+.popup-state-copy {
+  align-self: center;
+  padding: 50px 16px 0 0;
+  position: relative;
+  z-index: 1;
+}
+
+.popup-active-pill {
+  background: color-mix(in srgb, var(--card) 72%, transparent);
+  border: 1px solid var(--success);
+  border-radius: 999px;
+  color: var(--foreground);
+  font-size: 12px;
+  gap: 8px;
+  justify-content: center;
+  margin: 0 0 14px 14px;
+  min-height: 34px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.popup-active-dot {
+  background: var(--success);
+  border-radius: 999px;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--success) 70%, transparent);
+  height: 7px;
+  width: 7px;
+}
+
+.popup-active-pill strong,
 .popup-state-view.is-on .popup-state-copy h2 span {
   color: var(--success);
 }
 
+.popup-state-view.is-off .popup-active-pill {
+  border-color: var(--destructive);
+}
+
+.popup-state-view.is-off .popup-active-dot {
+  background: var(--destructive);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--destructive) 70%, transparent);
+}
+
+.popup-state-view.is-off .popup-active-pill strong,
 .popup-state-view.is-off .popup-state-copy h2 span {
   color: var(--destructive);
 }
 
+.popup-state-copy h2 {
+  font-size: 25px;
+  font-weight: 720;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  margin: 0;
+  white-space: nowrap;
+}
+
 .popup-state-copy p {
   color: var(--muted-foreground);
-  font-size: 0.78rem;
+  font-size: 12px;
   line-height: 1.5;
-  margin: 0.35rem auto 0;
-  max-width: 17rem;
+  margin: 9px 0 0;
+  max-width: 155px;
 }
 
-.popup-sparkle {
-  background: var(--primary);
-  border-radius: 999px;
-  height: 0.2rem;
-  position: absolute;
-  width: 0.2rem;
-}
-
-.popup-sparkle.one { left: 1rem; top: 1.2rem; }
-.popup-sparkle.two { right: 1rem; top: 1.5rem; }
-.popup-sparkle.three { bottom: 1rem; left: 1.35rem; }
-.popup-sparkle.four { bottom: 1.1rem; right: 1.25rem; }
-
-.popup-detection-card {
-  background: color-mix(in srgb, var(--card) 88%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  color: var(--primary);
-  gap: 0.65rem;
-  padding: 0.7rem 0.8rem;
-  text-align: left;
+.popup-detection-card,
+.popup-overwrite-control,
+.resume-upload-panel {
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--foreground) 3%, transparent), 0 10px 24px color-mix(in srgb, var(--background) 52%, transparent);
+  min-height: 72px;
   width: 100%;
 }
 
-.popup-detection-card span,
-.popup-detection-card strong,
-.popup-detection-card small,
-.popup-overwrite-control span,
-.popup-overwrite-control strong,
-.popup-overwrite-control small {
+.popup-detection-card {
+  color: inherit;
+  gap: 12px;
+  padding: 10px 14px;
+  text-align: left;
+  transition: border-color var(--motion-base) var(--ease-standard), background-color var(--motion-base) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+}
+
+.popup-detection-card:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+}
+
+.popup-detection-card:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.popup-detection-card:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.popup-card-icon {
+  background: color-mix(in srgb, var(--brand-violet) 10%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--brand-violet) 30%, var(--border));
+  border-radius: 999px;
+  color: var(--brand-violet);
+  flex: 0 0 44px;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.popup-card-icon svg {
+  height: 21px;
+  width: 21px;
+}
+
+.popup-card-copy {
   display: block;
+  flex: 1;
   min-width: 0;
 }
 
-.popup-detection-card strong,
-.popup-overwrite-control strong {
-  color: var(--foreground);
-  font-size: 0.75rem;
+.popup-card-copy strong,
+.popup-card-copy small {
+  display: block;
 }
 
-.popup-detection-card small,
-.popup-overwrite-control small {
+.popup-card-copy strong {
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.popup-card-copy small {
   color: var(--muted-foreground);
-  font-size: 0.66rem;
-  line-height: 1.35;
-  margin-top: 0.15rem;
+  display: -webkit-box;
+  font-size: 11px;
+  line-height: 1.45;
+  margin-top: 4px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.popup-card-chevron {
+  color: var(--brand-violet);
+  flex: 0 0 19px;
+  height: 19px;
+  width: 19px;
+}
+
+.popup-overwrite-control {
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.popup-overwrite-control [data-slot="switch"] {
+  background: var(--input);
+  border-color: var(--border);
+  flex: 0 0 42px;
+  height: 24px;
+  width: 42px;
+}
+
+.popup-overwrite-control [data-slot="switch"][data-state="checked"] {
+  background: var(--success);
+}
+
+.popup-overwrite-control [data-slot="switch-thumb"] {
+  height: 20px;
+  width: 20px;
 }
 
 .resume-upload-panel {
-  background: color-mix(in srgb, var(--card) 88%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
   display: grid;
-  gap: 0.55rem;
-  padding: 0.7rem;
+  gap: 8px;
+  padding: 12px;
   text-align: left;
-  width: 100%;
 }
 
 .resume-upload-panel [data-slot="label"] {
-  font-size: 0.72rem;
+  font-size: 12px;
 }
 
 .resume-upload-panel p {
   color: var(--muted-foreground);
-  font-size: 0.65rem;
+  font-size: 10px;
   line-height: 1.4;
-  margin: 0.2rem 0 0;
+  margin: 3px 0 0;
 }
 
 .resume-tag-filter {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: 5px;
 }
 
 .resume-tag-filter [data-slot="button"] {
   border-radius: 999px;
-  font-size: 0.65rem;
+  font-size: 10px;
 }
 
 .resume-tag-filter [data-slot="button"].is-active {
-  background: color-mix(in srgb, var(--primary) 12%, var(--card));
   border-color: var(--primary);
   color: var(--primary);
 }
@@ -237,36 +368,34 @@ body,
 }
 
 .resume-select-content {
-  max-width: 20rem;
-}
-
-.popup-overwrite-control {
-  background: color-mix(in srgb, var(--card) 72%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  gap: 0.65rem;
-  padding: 0.6rem 0.7rem;
-  text-align: left;
-  width: 100%;
+  max-width: 320px;
 }
 
 .popup-actions {
   display: grid;
+  margin-top: 2px;
   width: 100%;
 }
 
 .ai-fill-button {
-  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 62%, var(--brand-violet)));
-  border: 1px solid color-mix(in srgb, var(--primary) 70%, var(--border));
-  box-shadow: 0 0.65rem 1.5rem color-mix(in srgb, var(--primary) 20%, transparent);
-  color: var(--primary-foreground);
-  height: 2.65rem;
+  background: linear-gradient(135deg, var(--brand-violet), color-mix(in srgb, var(--primary) 72%, var(--brand-violet)));
+  border: 1px solid color-mix(in srgb, var(--primary) 62%, var(--border));
+  border-radius: 12px;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand-violet) 28%, transparent), inset 0 1px 0 color-mix(in srgb, var(--foreground) 22%, transparent);
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 700;
+  height: 54px;
   width: 100%;
 }
 
 .ai-fill-button:hover:not(:disabled) {
-  filter: saturate(1.06) brightness(1.04);
+  filter: brightness(1.08) saturate(1.08);
+}
+
+.ai-fill-button:disabled {
+  filter: saturate(0.72);
+  opacity: 0.72;
 }
 
 .ai-fill-icon {
@@ -276,11 +405,11 @@ body,
 }
 
 .popup-inline-feedback {
-  border-radius: var(--radius-md);
-  font-size: 0.68rem;
-  gap: 0.45rem;
+  border-radius: 10px;
+  font-size: 11px;
+  gap: 8px;
   line-height: 1.4;
-  padding: 0.55rem 0.65rem;
+  padding: 8px 10px;
   text-align: left;
   width: 100%;
 }
@@ -297,18 +426,19 @@ body,
   color: var(--destructive);
 }
 
-.popup-off-button {
-  margin-top: 1rem;
-}
-
 .popup-privacy {
   border-top: 1px solid var(--border);
   color: var(--muted-foreground);
-  font-size: 0.68rem;
-  gap: 0.45rem;
+  font-size: 11px;
+  gap: 9px;
   justify-content: center;
-  margin-top: 0.7rem;
-  padding-top: 0.75rem;
+  margin-top: 13px;
+  padding-top: 13px;
+}
+
+.popup-privacy svg {
+  height: 18px;
+  width: 18px;
 }
 
 .popup-privacy.is-on svg {
@@ -318,23 +448,27 @@ body,
 .popup-loading,
 .welcome-card {
   align-content: center;
+  background-image:
+    linear-gradient(to bottom, color-mix(in srgb, var(--background) 22%, transparent), color-mix(in srgb, var(--background) 58%, transparent)),
+    url("/assets/folio-space-background.png");
+  background-size: 100% 100%;
   display: grid;
-  gap: 0.9rem;
+  gap: 14px;
   justify-items: center;
-  min-height: 400px;
+  min-height: 590px;
   text-align: center;
 }
 
 .popup-eyebrow {
-  color: var(--primary);
-  font-size: 0.7rem;
+  color: var(--brand-violet);
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .welcome-card h1 {
-  font-size: 1.5rem;
+  font-size: 24px;
   letter-spacing: -0.04em;
   margin: 0;
 }
@@ -342,15 +476,15 @@ body,
 .welcome-card > p,
 .popup-loading p {
   color: var(--muted-foreground);
-  font-size: 0.78rem;
+  font-size: 12px;
   line-height: 1.5;
   margin: 0;
-  max-width: 16rem;
+  max-width: 260px;
 }
 
 .welcome-steps {
   display: grid;
-  gap: 0.45rem;
+  gap: 7px;
   text-align: left;
 }
 
@@ -358,15 +492,16 @@ body,
   align-items: center;
   color: var(--muted-foreground);
   display: flex;
-  font-size: 0.72rem;
-  gap: 0.45rem;
+  font-size: 11px;
+  gap: 7px;
 }
 
 .welcome-steps svg {
   color: var(--success);
 }
 
-.popup-spin {
+.popup-spin,
+.popup-refresh-icon.is-spinning {
   animation: popup-spin 700ms linear infinite;
 }
 
@@ -379,11 +514,32 @@ body,
   to { opacity: 1; transform: translateY(0); }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 340px) {
   html,
   body,
   #root {
     min-width: 320px;
     width: 320px;
+  }
+
+  .popup-panel {
+    padding-inline: 14px;
+  }
+
+  .popup-header-actions {
+    gap: 6px;
+  }
+
+  .popup-hero {
+    grid-template-columns: 49% 51%;
+    margin-inline: -14px;
+  }
+
+  .popup-mascot-stage img {
+    left: -18px;
+  }
+
+  .popup-state-copy h2 {
+    font-size: 22px;
   }
 }

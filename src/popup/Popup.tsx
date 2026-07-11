@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, FileText, LoaderCircle, Power, RefreshCw, Settings, ShieldCheck, Zap } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, FileText, LoaderCircle, Power, RefreshCw, Search, Settings, ShieldCheck, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Toaster } from "@/components/ui/sonner";
+import { Switch } from "@/components/ui/switch";
 import { PopupLayout } from "@/layouts/popup-layout";
 import { addProfileActivity } from "../shared/activity";
 import { FolioMark } from "../shared/brand";
@@ -16,13 +16,6 @@ import type { DetectedField, DetectedUploadField, FieldMatch, FillResult, FolioP
 
 type ScanState = "idle" | "scanning" | "ready";
 type FillState = "idle" | "filling" | "success" | "error";
-
-const SCANNING_MESSAGES = [
-  "Reading the page geometry...",
-  "Mapping fields into a tiny constellation...",
-  "Checking labels, placeholders, and intent...",
-  "Finding the safest places to write..."
-];
 
 const READY_MESSAGES = [
   "I found a clean path through this form.",
@@ -100,13 +93,6 @@ export function Popup() {
     [filteredResumeDocuments, profile?.preferences.defaultResumeId, selectedResumeId]
   );
   const canFillPage = isEnabled && (fillableMatches.length > 0 || (uploadFields.length > 0 && selectedResume !== null));
-  const readyTitle = scanState === "scanning" ? "Scanning page" : canFillPage ? "Ready to fill" : "Nothing to fill";
-  const scanSummary =
-    scanState === "scanning"
-      ? pickMessage(SCANNING_MESSAGES, siteSeed + messageSeed)
-      : detectedFields.length > 0
-        ? `Detected ${detectedFields.length} fields on this page`
-        : status || pickMessage(EMPTY_MESSAGES, siteSeed + messageSeed);
   useEffect(() => {
     let removeThemeListener: () => void = () => undefined;
     getThemeMode().then((mode) => {
@@ -354,6 +340,7 @@ export function Popup() {
   return (
     <PopupLayout className="popup-shell">
       <section className="popup-panel">
+      <div className="popup-space-background" aria-hidden="true" />
       <header className="popup-header">
         <div className="popup-brand">
           <FolioMark className="popup-mark" />
@@ -363,73 +350,64 @@ export function Popup() {
           <Button
             type="button"
             variant="ghost"
-            size="icon-xs"
+            size="icon"
             className="popup-icon-button"
             onClick={() => void refreshPageScan()}
             disabled={!isEnabled || scanState === "scanning"}
-            aria-label="Refresh scan"
-            title="Refresh scan"
+            aria-label="Refresh page scan"
+            title="Refresh page scan"
           >
-            <RefreshCw size={14} className={scanState === "scanning" ? "popup-refresh-icon is-spinning" : "popup-refresh-icon"} />
+            <RefreshCw className={scanState === "scanning" ? "popup-refresh-icon is-spinning" : "popup-refresh-icon"} />
           </Button>
-          <Button type="button" variant="ghost" size="icon-xs" className="popup-icon-button" onClick={openOptions} aria-label="Open settings" title="Open settings">
-            <Settings size={15} />
+          <Button type="button" variant="ghost" size="icon" className="popup-icon-button" onClick={openOptions} aria-label="Open settings" title="Open settings">
+            <Settings />
           </Button>
           <Button
             type="button"
             variant="ghost"
-            size="icon-xs"
+            size="icon"
             className={isEnabled ? "popup-icon-button popup-power-button is-on" : "popup-icon-button popup-power-button is-off"}
             onClick={() => void toggleExtension(!isEnabled)}
             aria-label={isEnabled ? "Turn Folio off" : "Turn Folio on"}
+            aria-pressed={isEnabled}
             title={isEnabled ? "Turn Folio off" : "Turn Folio on"}
           >
-            <Power size={14} />
+            <Power />
           </Button>
         </div>
       </header>
 
-      {!isEnabled ? (
-        <div key="folio-off" className="popup-state-view is-off">
-          <div className="popup-state-icon">
-            <Power size={48} />
+      <div key={isEnabled ? "folio-on" : "folio-off"} className={isEnabled ? "popup-state-view is-on" : "popup-state-view is-off"}>
+        <section className="popup-hero" aria-labelledby="folio-state-title">
+          <div className="popup-mascot-stage" aria-hidden="true">
+            <img src="/assets/folio-mascot.png" alt="" />
           </div>
           <div className="popup-state-copy">
-            <h2>
-              Folio is <span>off</span>
-            </h2>
-            <p>Turn it on when you want Folio to scan this page and fill forms only when you ask.</p>
+            <div className="popup-active-pill">
+              <span className="popup-active-dot" />
+              <span>Folio is <strong>{isEnabled ? "ON" : "OFF"}</strong></span>
+            </div>
+            <h2 id="folio-state-title">Folio is <span>{isEnabled ? "active" : "paused"}</span></h2>
+            <p>{isEnabled ? "Folio checks this page and fills only when you choose." : "Turn Folio on when you want to check this page and fill forms."}</p>
           </div>
-          <Button type="button" size="sm" className="popup-off-button" onClick={() => void toggleExtension(true)}>
-            <Power size={18} />
-            Turn Folio on
-          </Button>
-        </div>
-      ) : (
-        <div key="folio-on" className="popup-state-view is-on">
-          <div className="popup-state-icon">
-            <Zap size={48} />
-            <span className="popup-sparkle one" />
-            <span className="popup-sparkle two" />
-            <span className="popup-sparkle three" />
-            <span className="popup-sparkle four" />
-          </div>
-          <div className="popup-state-copy">
-            <h2>
-              Folio is <span>on</span>
-            </h2>
-            <p>Folio checks this page and fills only when you choose.</p>
-          </div>
+        </section>
 
-          <div className="popup-detection-card" role="status" aria-live="polite">
-            {scanState === "scanning" ? (
-              <><LoaderCircle className="popup-spin" size={18} /><span><strong>Checking this page</strong><small>Looking for safe field matches…</small></span></>
-            ) : canFillPage ? (
-              <><CheckCircle2 size={18} /><span><strong>{fillableMatches.length + uploadFields.length} item{fillableMatches.length + uploadFields.length === 1 ? "" : "s"} ready</strong><small>{detectedFields.length} fields detected on this page</small></span></>
-            ) : (
-              <><AlertCircle size={18} /><span><strong>No fillable form found</strong><small>{status || "Open a job application and refresh the scan."}</small></span></>
-            )}
-          </div>
+        <button
+          type="button"
+          className="popup-detection-card"
+          onClick={() => void refreshPageScan()}
+          disabled={!isEnabled || scanState === "scanning"}
+          aria-live="polite"
+        >
+          <span className="popup-card-icon">
+            {scanState === "scanning" ? <LoaderCircle className="popup-spin" /> : canFillPage ? <CheckCircle2 /> : <Search />}
+          </span>
+          <span className="popup-card-copy">
+            <strong>{scanState === "scanning" ? "Checking this page" : canFillPage ? `${fillableMatches.length + uploadFields.length} item${fillableMatches.length + uploadFields.length === 1 ? "" : "s"} ready` : "No fillable form found"}</strong>
+            <small>{scanState === "scanning" ? "Looking for safe field matches…" : canFillPage ? `${detectedFields.length} fields detected on this page.` : status || "Open a regular website tab and refresh."}</small>
+          </span>
+          <ChevronRight className="popup-card-chevron" />
+        </button>
 
           {uploadFields.length > 0 && (
             <div className="resume-upload-panel">
@@ -470,10 +448,14 @@ export function Popup() {
             </div>
           )}
 
-          <label className="popup-overwrite-control">
-            <Checkbox checked={overwriteExisting} onCheckedChange={(checked) => setOverwriteExisting(checked === true)} />
-            <span><strong>Replace existing answers</strong><small>Leave off to protect fields that already contain text.</small></span>
-          </label>
+          <div className="popup-overwrite-control">
+            <span className="popup-card-icon"><ShieldCheck /></span>
+            <label htmlFor="overwrite-existing" className="popup-card-copy">
+              <strong>Replace existing answers</strong>
+              <small>Leave off to protect fields that already contain text.</small>
+            </label>
+            <Switch id="overwrite-existing" checked={overwriteExisting} onCheckedChange={setOverwriteExisting} aria-label="Replace existing answers" />
+          </div>
 
           <div className="popup-actions">
             <Button className="ai-fill-button motion-press" onClick={fillFields} disabled={!canFillPage || fillState === "filling"}>
@@ -491,10 +473,9 @@ export function Popup() {
             </div>
           )}
         </div>
-      )}
 
       <footer className={isEnabled ? "popup-privacy is-on" : "popup-privacy"}>
-        <ShieldCheck size={18} />
+        <ShieldCheck />
         <span>Your data stays local and private.</span>
       </footer>
       </section>
