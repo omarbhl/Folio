@@ -1,4 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   BriefcaseBusiness,
   ChevronRight,
@@ -30,7 +31,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -38,21 +38,28 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Toaster } from "@/components/ui/sonner";
+import { ConfirmationDialog } from "@/components/shared/confirmation-dialog";
+import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
+import { OptionsLayout } from "@/layouts/options-layout";
 import { cn } from "@/lib/utils";
 import { addProfileActivity } from "../shared/activity";
 import { CraneMark } from "../shared/brand";
 import { defaultProfile } from "../shared/defaultProfile";
 import {
   exportProfile,
+  clearOnboardingDraft,
+  getOnboardingDraft,
   getProfile,
   getThemeMode,
   hasProfile,
   importProfile,
+  saveOnboardingDraft,
   saveProfile,
   saveThemeMode
 } from "../shared/storage";
 import { applyThemeMode } from "../shared/theme";
-import type { EducationEntry, ExperienceEntry, FolioProfile, PersonalProfile, ProfileDocument, ThemeMode } from "../shared/types";
+import type { EducationEntry, ExperienceEntry, FolioProfile, OnboardingPath, PersonalProfile, ProfileDocument, ThemeMode } from "../shared/types";
 
 const personalFields: Array<{ key: keyof PersonalProfile; label: string; type?: string }> = [
   { key: "firstName", label: "First name" },
@@ -145,6 +152,10 @@ export function OptionsPage() {
   const [previewZoom, setPreviewZoom] = useState(1);
   const [documentToDelete, setDocumentToDelete] = useState<ProfileDocument | null>(null);
   const [githubStarCount, setGithubStarCount] = useState<number | null>(null);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [onboardingPath, setOnboardingPath] = useState<OnboardingPath>("resume");
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [resumeUploadError, setResumeUploadError] = useState("");
   const isDirty = JSON.stringify(profile) !== savedSnapshot;
   const estimatedSecondsSaved = profile.metrics.totalFieldsFilled * SECONDS_SAVED_PER_FIELD + profile.metrics.totalFormsFilled * SECONDS_SAVED_PER_FORM_REVIEW;
   const resumeDocuments = useMemo(() => profile.documents.filter((document) => document.type === "resume" && (document.fileName || document.name)), [profile.documents]);
@@ -285,7 +296,7 @@ export function OptionsPage() {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([hasProfile(), getProfile()]).then(([profileExists, storedProfile]) => {
+    Promise.all([hasProfile(), getProfile(), getOnboardingDraft()]).then(([profileExists, storedProfile, onboardingDraft]) => {
       if (cancelled) {
         return;
       }
@@ -294,6 +305,11 @@ export function OptionsPage() {
       if (storedProfile) {
         setProfile(storedProfile);
         setSavedSnapshot(JSON.stringify(storedProfile));
+      } else if (onboardingDraft) {
+        setProfile(onboardingDraft.profile);
+        setOnboardingStep(onboardingDraft.step);
+        setOnboardingPath(onboardingDraft.path);
+        setSavedSnapshot(JSON.stringify(defaultProfile));
       } else {
         setSavedSnapshot(JSON.stringify(defaultProfile));
       }
@@ -304,6 +320,23 @@ export function OptionsPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isFirstRun) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      void saveOnboardingDraft({
+        profile,
+        step: onboardingStep,
+        path: onboardingPath,
+        updatedAt: new Date().toISOString()
+      });
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [isFirstRun, onboardingPath, onboardingStep, profile]);
 
   useEffect(() => {
     getThemeMode().then(setThemeMode);
@@ -536,6 +569,12 @@ export function OptionsPage() {
     setHasSavedProfile(true);
     setSavedSnapshot(JSON.stringify(nextProfile));
     setStatus("Profile saved locally.");
+    toast.success("Profile saved", { description: "Your changes are stored locally on this device." });
+  }
+
+  async function completeOnboarding() {
+    await handleSave();
+    await clearOnboardingDraft();
   }
 
   async function handleExport() {
@@ -579,27 +618,40 @@ export function OptionsPage() {
     await saveThemeMode(mode);
   }
 
-  async function handleFilesUpload(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
+  async function addResumeFiles(files: File[]) {
     if (files.length === 0) {
       return;
     }
 
-    const documents = await Promise.all(files.map(readResumeDocument));
-    setProfile((current) => {
-      const nextProfile = {
-        ...current,
-        documents: [...current.documents.filter((document) => document.fileName || document.name), ...documents],
-        preferences: { ...current.preferences, defaultResumeId: current.preferences.defaultResumeId || documents[0]?.id || "" }
-      };
-      return documents.reduce(
-        (profileWithActivity, document) =>
-          addProfileActivity(profileWithActivity, "documentUploaded", `Uploaded document: ${document.fileName || document.name}`, document.id, document.createdAt),
-        nextProfile
-      );
-    });
-    setSelectedDocumentId(documents[0]?.id ?? "");
-    setStatus(`${documents.length} resume file${documents.length === 1 ? "" : "s"} added.`);
+    setIsUploadingResume(true);
+    setResumeUploadError("");
+    try {
+      const documents = await Promise.all(files.map(readResumeDocument));
+      setProfile((current) => {
+        const nextProfile = {
+          ...current,
+          documents: [...current.documents.filter((document) => document.fileName || document.name), ...documents],
+          preferences: { ...current.preferences, defaultResumeId: current.preferences.defaultResumeId || documents[0]?.id || "" }
+        };
+        return documents.reduce(
+          (profileWithActivity, document) =>
+            addProfileActivity(profileWithActivity, "documentUploaded", `Uploaded document: ${document.fileName || document.name}`, document.id, document.createdAt),
+          nextProfile
+        );
+      });
+      setSelectedDocumentId(documents[0]?.id ?? "");
+      setStatus(`${documents.length} resume file${documents.length === 1 ? "" : "s"} added.`);
+      toast.success(documents.length === 1 ? "Resume added" : `${documents.length} resumes added`, { description: "Stored locally in your Folio profile." });
+    } catch {
+      setResumeUploadError("Use a PDF, TXT, or Markdown file and try again.");
+      toast.error("Resume could not be read");
+    } finally {
+      setIsUploadingResume(false);
+    }
+  }
+
+  async function handleFilesUpload(event: ChangeEvent<HTMLInputElement>) {
+    await addResumeFiles(Array.from(event.target.files ?? []));
     event.target.value = "";
   }
 
@@ -655,8 +707,7 @@ export function OptionsPage() {
   }
 
   return (
-    <div className="folio-options-page">
-      <div className="settings-shell">
+    <OptionsLayout className="settings-shell">
         <header className="settings-topbar">
           <div className="settings-brand">
             <CraneMark className="brand-mark" />
@@ -700,92 +751,22 @@ export function OptionsPage() {
         </header>
 
         {isFirstRun ? (
-          <main className="first-run-shell" aria-labelledby="first-run-title">
-            <section className="first-run-hero">
-              <div>
-                <p className="eyebrow">Quick setup</p>
-                <h1 id="first-run-title">Start with the essentials.</h1>
-                <p>Add the few details Folio needs first. The full dashboard unlocks after you save.</p>
-              </div>
-              <div className="first-run-progress">
-                <div>
-                  <span>{onboardingCompleteCount} of {onboardingSteps.length} ready</span>
-                  <strong>{onboardingProgress}%</strong>
-                </div>
-                <Progress value={onboardingProgress} className="h-1.5" />
-              </div>
-            </section>
-
-            <section className="first-run-grid">
-              <Card className="first-run-card">
-                <CardHeader>
-                  <CardTitle>
-                    <UserRound size={18} />
-                    Your basics
-                  </CardTitle>
-                  <CardDescription>Used for the fields applications ask for most.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="first-run-fields">
-                    {starterPersonalFields.map((field) => (
-                      <div className="space-y-1.5" key={field.key}>
-                        <Label htmlFor={`starter-${field.key}`}>{field.label}</Label>
-                        <Input
-                          id={`starter-${field.key}`}
-                          type={field.type ?? "text"}
-                          value={profile.personal[field.key]}
-                          onChange={(event) => updatePersonal(field.key, event.target.value)}
-                          placeholder={field.placeholder}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="first-run-card">
-                <CardHeader>
-                  <CardTitle>
-                    <FilePlus2 size={18} />
-                    Resume
-                  </CardTitle>
-                  <CardDescription>Optional, but useful when forms ask for an upload.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="first-run-upload">
-                    <Button asChild variant={hasUsableResume ? "secondary" : "outline"}>
-                      <label className="cursor-pointer">
-                        <Upload size={16} />
-                        {hasUsableResume ? "Replace resume" : "Upload resume"}
-                        <input type="file" accept=".txt,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf" multiple onChange={handleFilesUpload} hidden />
-                      </label>
-                    </Button>
-                    <div>
-                      <strong>{resumeDocuments[0]?.name || resumeDocuments[0]?.fileName || "No resume yet"}</strong>
-                      <span>{hasUsableResume ? "Stored locally in your profile." : "You can add this later from Documents."}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="first-run-save-row">
-                <div>
-                  <ShieldCheck size={17} />
-                  <span>Folio stores this on your device and scans only when you ask.</span>
-                </div>
-                <Button type="button" className="first-run-save-button" onClick={() => void handleSave()} disabled={!isDirty}>
-                  <Save size={16} color="white" />
-                  Save and open Folio
-                </Button>
-              </div>
-            </section>
-
-            {status && (
-              <div className="status" role="status">
-                {status}
-              </div>
-            )}
-          </main>
+          <OnboardingFlow
+            profile={profile}
+            step={onboardingStep}
+            path={onboardingPath}
+            resumeName={resumeDocuments[0]?.name || resumeDocuments[0]?.fileName}
+            isUploading={isUploadingResume}
+            uploadError={resumeUploadError}
+            onStepChange={setOnboardingStep}
+            onPathChange={setOnboardingPath}
+            onPersonalChange={updatePersonal}
+            onExperienceChange={updateExperience}
+            onEducationChange={updateEducation}
+            onEnabledChange={(enabled) => setProfile((current) => ({ ...current, preferences: { ...current.preferences, enabled } }))}
+            onFilesSelected={addResumeFiles}
+            onComplete={completeOnboarding}
+          />
         ) : (
           <>
         <div className="settings-page-heading">
@@ -1217,24 +1198,15 @@ export function OptionsPage() {
                     </div>
                   )}
                 </CardContent>
-                <Dialog open={documentToDelete !== null} onOpenChange={(open) => !open && setDocumentToDelete(null)}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Delete resume?</DialogTitle>
-                      <DialogDescription>
-                        This removes {documentToDelete?.name || documentToDelete?.fileName || "this resume"} from Folio. This cannot be undone after you save.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
-                      </DialogClose>
-                      <Button variant="destructive" onClick={() => documentToDelete && deleteDocument(documentToDelete.id)}>
-                        Delete resume
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                <ConfirmationDialog
+                  open={documentToDelete !== null}
+                  onOpenChange={(open) => !open && setDocumentToDelete(null)}
+                  title="Delete resume?"
+                  description={<>This removes {documentToDelete?.name || documentToDelete?.fileName || "this resume"} from Folio. This cannot be undone after you save.</>}
+                  confirmLabel="Delete resume"
+                  destructive
+                  onConfirm={() => documentToDelete && deleteDocument(documentToDelete.id)}
+                />
               </Card>
             )}
 
@@ -1574,8 +1546,8 @@ export function OptionsPage() {
         </main>
           </>
         )}
-      </div>
-    </div>
+      <Toaster position="bottom-right" closeButton />
+    </OptionsLayout>
   );
 }
 
