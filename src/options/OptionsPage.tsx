@@ -8,7 +8,6 @@ import {
   FileDown,
   FilePlus2,
   FileText,
-  Github,
   GraduationCap,
   Laptop,
   LayoutDashboard,
@@ -18,6 +17,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Star,
   Sun,
   Tags,
   Trash2,
@@ -110,7 +110,7 @@ const navItems: Array<{ id: SectionId; label: string; description: string; icon:
   { id: "skills", label: "Skills", description: "Keep a reusable skill set ready for application platforms.", icon: Tags },
   { id: "education", label: "Education", description: "Add the schools and programs that shaped you.", icon: GraduationCap },
   { id: "experience", label: "Experience", description: "Add the roles you've held and what you did there.", icon: BriefcaseBusiness },
-  { id: "ai", label: "AI", description: "A smarter application assistant is coming in a future update.", icon: Sparkles },
+  { id: "ai", label: "AI Assistant", description: "A smarter application assistant is coming in a future update.", icon: Sparkles },
   { id: "data", label: "Settings", description: "Import, export, and inspect the Folio profile stored in this browser.", icon: ShieldCheck }
 ];
 
@@ -728,15 +728,6 @@ export function OptionsPage() {
           </div>
 
           <div className="topbar-actions">
-            {!isFirstRun && (
-              <Button asChild variant="outline" className="github-star-button">
-                <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" aria-label="Star omarbhl/Folio on GitHub">
-                  <Github size={16} />
-                  <span>Star Folio</span>
-                  <strong>{githubStarCount === null ? "..." : formatCompactCount(githubStarCount)}</strong>
-                </a>
-              </Button>
-            )}
             <ToggleGroup
               type="single"
               value={themeMode}
@@ -783,17 +774,11 @@ export function OptionsPage() {
           <>
         <div className="settings-page-heading">
           <div>
-            <p className="eyebrow">{activeItem.label}</p>
+            <p className="eyebrow">Good morning! <span aria-hidden="true">👋</span></p>
             <h1>Customize once. Apply everywhere.</h1>
             <p>{activeItem.description}</p>
           </div>
-          <div className="progress-row">
-            <div>
-              <span>Profile completeness</span>
-              <strong>{profileCompleteness}%</strong>
-            </div>
-            <Progress value={profileCompleteness} className="h-1.5" />
-          </div>
+          <img className="options-hero-mascot" src="/assets/folio-mascot.png" alt="Folio mascot holding a completed form" />
         </div>
 
         {shouldShowOnboarding && (
@@ -839,7 +824,7 @@ export function OptionsPage() {
           </section>
         )}
 
-        <Tabs value={activeSection} onValueChange={(value) => setActiveSection(value as SectionId)}>
+        <Tabs className="settings-workspace" value={activeSection} onValueChange={(value) => setActiveSection(value as SectionId)}>
           <TabsList className="settings-tabs" aria-label="Settings categories">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -851,6 +836,24 @@ export function OptionsPage() {
               );
             })}
           </TabsList>
+
+          <aside className="settings-sidebar-footer">
+            <div className="review-card">
+              <Star size={20} />
+              <strong>Give us a review</strong>
+              <p>Star us on GitHub or leave a review on the store.</p>
+              <Button asChild size="sm">
+                <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
+                  Leave a review
+                  <span className="sr-only"> ({githubStarCount === null ? "loading stars" : `${formatCompactCount(githubStarCount)} GitHub stars`})</span>
+                </a>
+              </Button>
+            </div>
+            <div className="sidebar-privacy">
+              <ShieldCheck size={20} />
+              <span>Your data stays<br />local and private.</span>
+            </div>
+          </aside>
 
         {status && (
           <div className="status" role="status">
@@ -913,13 +916,10 @@ export function OptionsPage() {
                   <Card className="overview-panel">
                     <CardHeader className="overview-panel-header">
                       <CardTitle>AI assistant</CardTitle>
-                      <Button type="button" variant="outline" size="xs" onClick={() => setActiveSection("ai")}>
-                        Preview
-                      </Button>
                     </CardHeader>
                     <CardContent>
                       <div className="overview-ai-preview">
-                        <Sparkles size={18} />
+                        <img src="/assets/folio-mascot-face.png" alt="Folio AI assistant mascot" />
                         <strong>Coming soon</strong>
                         <p>Future Folio updates will bring smarter help for application questions.</p>
                       </div>
@@ -1512,7 +1512,7 @@ export function OptionsPage() {
                 <CardContent>
                   <div className="ai-placeholder">
                     <div className="ai-placeholder-icon">
-                      <Sparkles size={30} />
+                      <img src="/assets/folio-mascot-face.png" alt="Folio AI assistant mascot" />
                     </div>
                     <p className="eyebrow">AI</p>
                     <h2>Coming soon in the next updates.</h2>
