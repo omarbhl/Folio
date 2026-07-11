@@ -157,6 +157,14 @@ body,
   width: 190px;
 }
 
+.popup-state-view.is-off .popup-mascot-stage img.is-sleeping {
+  height: 280px;
+  left: -5px;
+  top: 20px;
+  transform: none;
+  width: 187px;
+}
+
 .popup-state-copy {
   align-self: center;
   padding: 50px 16px 0 0;
@@ -393,6 +401,12 @@ body,
   filter: brightness(1.08) saturate(1.08);
 }
 
+.ai-fill-button.is-power-on {
+  background: linear-gradient(135deg, var(--destructive), color-mix(in srgb, var(--destructive) 62%, var(--brand-violet)));
+  border-color: color-mix(in srgb, var(--destructive) 72%, var(--border));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--destructive) 24%, transparent), inset 0 1px 0 color-mix(in srgb, var(--foreground) 22%, transparent);
+}
+
 .ai-fill-button:disabled {
   filter: saturate(0.72);
   opacity: 0.72;
@@ -537,6 +551,10 @@ body,
 
   .popup-mascot-stage img {
     left: -18px;
+  }
+
+  .popup-state-view.is-off .popup-mascot-stage img.is-sleeping {
+    left: -15px;
   }
 
   .popup-state-copy h2 {

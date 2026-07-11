@@ -380,7 +380,11 @@ export function Popup() {
       <div key={isEnabled ? "folio-on" : "folio-off"} className={isEnabled ? "popup-state-view is-on" : "popup-state-view is-off"}>
         <section className="popup-hero" aria-labelledby="folio-state-title">
           <div className="popup-mascot-stage" aria-hidden="true">
-            <img src="/assets/folio-mascot.png" alt="" />
+            <img
+              className={isEnabled ? "" : "is-sleeping"}
+              src={isEnabled ? "/assets/folio-mascot.png" : "/assets/folio-mascot-sleeping.png"}
+              alt=""
+            />
           </div>
           <div className="popup-state-copy">
             <div className="popup-active-pill">
@@ -404,7 +408,7 @@ export function Popup() {
           </span>
           <span className="popup-card-copy">
             <strong>{scanState === "scanning" ? "Checking this page" : canFillPage ? `${fillableMatches.length + uploadFields.length} item${fillableMatches.length + uploadFields.length === 1 ? "" : "s"} ready` : "No fillable form found"}</strong>
-            <small>{scanState === "scanning" ? "Looking for safe field matches…" : canFillPage ? `${detectedFields.length} fields detected on this page.` : status || "Open a regular website tab and refresh."}</small>
+            <small>{!isEnabled ? "Folio cannot inspect this browser page. Try a regular website tab." : scanState === "scanning" ? "Looking for safe field matches…" : canFillPage ? `${detectedFields.length} fields detected on this page.` : status || "Open a regular website tab and refresh."}</small>
           </span>
           <ChevronRight className="popup-card-chevron" />
         </button>
@@ -458,11 +462,15 @@ export function Popup() {
           </div>
 
           <div className="popup-actions">
-            <Button className="ai-fill-button motion-press" onClick={fillFields} disabled={!canFillPage || fillState === "filling"}>
+            <Button
+              className={isEnabled ? "ai-fill-button motion-press" : "ai-fill-button is-power-on motion-press"}
+              onClick={isEnabled ? fillFields : () => void toggleExtension(true)}
+              disabled={isEnabled && (!canFillPage || fillState === "filling")}
+            >
               <span className="ai-fill-icon">
-                {fillState === "filling" ? <LoaderCircle className="popup-spin" size={20} /> : fillState === "success" ? <CheckCircle2 size={20} /> : <Zap size={20} />}
+                {!isEnabled ? <Power size={20} /> : fillState === "filling" ? <LoaderCircle className="popup-spin" size={20} /> : fillState === "success" ? <CheckCircle2 size={20} /> : <Zap size={20} />}
               </span>
-              <span>{fillState === "filling" ? "Filling fields…" : fillState === "success" ? "Filled successfully" : "Fill matched fields"}</span>
+              <span>{!isEnabled ? "Turn Folio on" : fillState === "filling" ? "Filling fields…" : fillState === "success" ? "Filled successfully" : "Fill matched fields"}</span>
             </Button>
           </div>
 
