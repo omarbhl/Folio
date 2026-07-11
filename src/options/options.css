@@ -806,6 +806,13 @@ button.education-timeline-content.is-active {
     var(--background);
 }
 
+:root[data-theme="light"] body {
+  background:
+    linear-gradient(color-mix(in srgb, var(--background) 14%, transparent), color-mix(in srgb, var(--background) 34%, transparent)),
+    url("/assets/folio-options-background-light.png") center / cover fixed,
+    var(--background);
+}
+
 .settings-shell {
   display: grid;
   gap: 1.5rem;
