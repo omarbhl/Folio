@@ -21,6 +21,10 @@ body,
   position: relative;
 }
 
+.popup-panel:has(.popup-state-view.is-off) {
+  height: 547px;
+}
+
 .popup-space-background {
   background-image:
     linear-gradient(to bottom, color-mix(in srgb, var(--background) 16%, transparent), color-mix(in srgb, var(--background) 56%, transparent)),
@@ -135,7 +139,7 @@ body,
   align-items: center;
   display: flex;
   flex-direction: column;
-  height: 355px;
+  height: 312px;
 }
 
 .popup-state-view:has(.resume-upload-panel) .popup-hero {
@@ -197,7 +201,7 @@ body,
 }
 
 .popup-state-view.is-off .popup-mascot-stage {
-  flex: 0 0 180px;
+  flex: 0 0 195px;
   width: 100%;
 }
 
