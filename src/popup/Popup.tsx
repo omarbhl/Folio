@@ -450,7 +450,7 @@ export function Popup() {
                 </div>
               )}
               <div className="resume-upload-controls">
-                <Select value={selectedResume?.id} onValueChange={setSelectedResumeId} disabled={filteredResumeDocuments.length === 0}>
+                <Select value={selectedResume?.id ?? ""} onValueChange={setSelectedResumeId} disabled={filteredResumeDocuments.length === 0}>
                   <SelectTrigger id="resume-upload-select" size="sm" className="resume-select-trigger">
                     <SelectValue placeholder="No saved resumes" />
                   </SelectTrigger>

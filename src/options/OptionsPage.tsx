@@ -1870,7 +1870,7 @@ function LocationSelect({
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Select
-        value={selectedOption?.value}
+        value={selectedOption?.value ?? ""}
         onValueChange={onChange}
         disabled={disabled || options.length === 0}
       >
