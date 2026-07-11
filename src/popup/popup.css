@@ -178,9 +178,13 @@ body,
 .popup-state-view.is-off .popup-mascot-stage img.is-sleeping {
   height: 280px;
   left: -5px;
-  top: 20px;
+  top: 55px;
   transform: none;
   width: 187px;
+}
+
+.popup-state-view.is-off .popup-state-copy {
+  transform: translate(-8px, -27px);
 }
 
 .popup-state-copy {
