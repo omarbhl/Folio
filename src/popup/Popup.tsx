@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Toaster } from "@/components/ui/sonner";
 import { PopupLayout } from "@/layouts/popup-layout";
 import { addProfileActivity } from "../shared/activity";
-import { CraneMark } from "../shared/brand";
+import { FolioMark } from "../shared/brand";
 import { isSafeFillMatch, matchFields } from "../shared/fieldMatching";
 import { getProfile, getThemeMode, saveProfile } from "../shared/storage";
 import { applyThemeMode } from "../shared/theme";
@@ -313,7 +313,7 @@ export function Popup() {
     return (
       <PopupLayout className="popup-shell">
         <section className="popup-panel popup-loading">
-          <CraneMark className="popup-mark" />
+          <FolioMark className="popup-mark" />
           <p>Loading Folio...</p>
         </section>
       </PopupLayout>
@@ -324,7 +324,7 @@ export function Popup() {
     return (
       <PopupLayout className="popup-shell">
         <section className="popup-panel welcome-card">
-            <CraneMark className="popup-mark hero" />
+            <FolioMark className="popup-mark hero" />
             <span className="popup-eyebrow">Welcome to Folio</span>
             <h1>Customize once. Apply everywhere.</h1>
             <p>Create a local profile once, then use Folio only when you click it.</p>
@@ -356,7 +356,7 @@ export function Popup() {
       <section className="popup-panel">
       <header className="popup-header">
         <div className="popup-brand">
-          <CraneMark className="popup-mark" />
+          <FolioMark className="popup-mark" />
           <h1>Folio</h1>
         </div>
         <div className="popup-header-actions">

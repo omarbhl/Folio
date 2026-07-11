@@ -45,7 +45,7 @@ import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { OptionsLayout } from "@/layouts/options-layout";
 import { cn } from "@/lib/utils";
 import { addProfileActivity } from "../shared/activity";
-import { CraneMark } from "../shared/brand";
+import { FolioMark } from "../shared/brand";
 import { defaultProfile } from "../shared/defaultProfile";
 import {
   exportProfile,
@@ -720,7 +720,7 @@ export function OptionsPage() {
     <OptionsLayout className="settings-shell">
         <header className="settings-topbar">
           <div className="settings-brand">
-            <CraneMark className="brand-mark" />
+            <FolioMark className="brand-mark" />
             <div>
               <strong>Folio</strong>
               <span>Private autofill profile</span>
