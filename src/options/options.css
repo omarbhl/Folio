@@ -798,10 +798,11 @@ button.education-timeline-content.is-active {
 }
 
 /* Space dashboard shell */
-body {
+:root[data-theme="dark"] body,
+:root.dark body {
   background:
     linear-gradient(color-mix(in srgb, var(--background) 52%, transparent), color-mix(in srgb, var(--background) 70%, transparent)),
-    url("/assets/folio-space-background.png") center / cover fixed,
+    url("/assets/folio-options-background.png") center / cover fixed,
     var(--background);
 }
 
