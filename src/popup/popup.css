@@ -485,12 +485,16 @@ body,
 
 .popup-privacy {
   border-top: 1px solid var(--border);
+  bottom: 16px;
   color: var(--muted-foreground);
   font-size: 11px;
   gap: 9px;
   justify-content: center;
-  margin-top: 13px;
+  left: 18px;
   padding-top: 13px;
+  position: absolute;
+  right: 18px;
+  z-index: 2;
 }
 
 .popup-privacy svg {
