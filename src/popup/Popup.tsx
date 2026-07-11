@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, FileText, Power, RefreshCw, Settings, ShieldCheck, Zap } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileText, LoaderCircle, Power, RefreshCw, Settings, ShieldCheck, Zap } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Toaster } from "@/components/ui/sonner";
+import { PopupLayout } from "@/layouts/popup-layout";
 import { addProfileActivity } from "../shared/activity";
 import { CraneMark } from "../shared/brand";
 import { isSafeFillMatch, matchFields } from "../shared/fieldMatching";
@@ -11,6 +15,7 @@ import { applyThemeMode } from "../shared/theme";
 import type { DetectedField, DetectedUploadField, FieldMatch, FillResult, FolioProfile, ProfileDocument } from "../shared/types";
 
 type ScanState = "idle" | "scanning" | "ready";
+type FillState = "idle" | "filling" | "success" | "error";
 
 const SCANNING_MESSAGES = [
   "Reading the page geometry...",
@@ -73,6 +78,7 @@ export function Popup() {
   const [status, setStatus] = useState("");
   const [siteSeed, setSiteSeed] = useState(0);
   const [messageSeed] = useState(() => Date.now());
+  const [fillState, setFillState] = useState<FillState>("idle");
 
   const isEnabled = profile?.preferences.enabled ?? true;
   const fillableMatches = useMemo(() => matches.filter(isSafeFillMatch), [matches]);
@@ -142,6 +148,7 @@ export function Popup() {
     }
 
     setScanState("scanning");
+    setFillState("idle");
     setStatus("");
 
     try {
@@ -163,7 +170,7 @@ export function Popup() {
       setUploadFields([]);
       setMatches([]);
       setScanState("ready");
-      setStatus(pickMessage(EMPTY_MESSAGES, siteSeed));
+      setStatus("Folio cannot inspect this browser page. Try a regular website tab.");
     }
   }, [profile, siteSeed]);
 
@@ -191,6 +198,8 @@ export function Popup() {
     }
 
     try {
+      setFillState("filling");
+      setStatus("Filling confident matches…");
       const fieldResult =
         safeMatches.length > 0
           ? ((await sendTabMessage({
@@ -233,8 +242,12 @@ export function Popup() {
       }
       const resumeMessage = resumeResult.filledCount > 0 ? ` Attached ${selectedResume?.fileName || selectedResume?.name}.` : "";
       setStatus(`Filled ${totalFilled} item${totalFilled === 1 ? "" : "s"}.${resumeMessage}`);
+      setFillState("success");
+      toast.success("Form updated", { description: `${totalFilled} item${totalFilled === 1 ? "" : "s"} filled. Review the page before submitting.` });
     } catch (error) {
-      setStatus(pickMessage(EMPTY_MESSAGES, siteSeed + messageSeed));
+      setStatus("Folio could not complete this fill. Your saved profile was not changed.");
+      setFillState("error");
+      toast.error("Fill could not be completed");
     }
   }
 
@@ -298,18 +311,18 @@ export function Popup() {
 
   if (loadingProfile) {
     return (
-      <main className="popup-shell">
+      <PopupLayout className="popup-shell">
         <section className="popup-panel popup-loading">
           <CraneMark className="popup-mark" />
           <p>Loading Folio...</p>
         </section>
-      </main>
+      </PopupLayout>
     );
   }
 
   if (!profile) {
     return (
-      <main className="popup-shell">
+      <PopupLayout className="popup-shell">
         <section className="popup-panel welcome-card">
             <CraneMark className="popup-mark hero" />
             <span className="popup-eyebrow">Welcome to Folio</span>
@@ -334,12 +347,12 @@ export function Popup() {
               Start setup
             </Button>
         </section>
-      </main>
+      </PopupLayout>
     );
   }
 
   return (
-    <main className="popup-shell">
+    <PopupLayout className="popup-shell">
       <section className="popup-panel">
       <header className="popup-header">
         <div className="popup-brand">
@@ -405,7 +418,17 @@ export function Popup() {
             <h2>
               Folio is <span>on</span>
             </h2>
-            <p>Folio will scan this page and auto-fill forms when possible.</p>
+            <p>Folio checks this page and fills only when you choose.</p>
+          </div>
+
+          <div className="popup-detection-card" role="status" aria-live="polite">
+            {scanState === "scanning" ? (
+              <><LoaderCircle className="popup-spin" size={18} /><span><strong>Checking this page</strong><small>Looking for safe field matches…</small></span></>
+            ) : canFillPage ? (
+              <><CheckCircle2 size={18} /><span><strong>{fillableMatches.length + uploadFields.length} item{fillableMatches.length + uploadFields.length === 1 ? "" : "s"} ready</strong><small>{detectedFields.length} fields detected on this page</small></span></>
+            ) : (
+              <><AlertCircle size={18} /><span><strong>No fillable form found</strong><small>{status || "Open a job application and refresh the scan."}</small></span></>
+            )}
           </div>
 
           {uploadFields.length > 0 && (
@@ -447,14 +470,26 @@ export function Popup() {
             </div>
           )}
 
+          <label className="popup-overwrite-control">
+            <Checkbox checked={overwriteExisting} onCheckedChange={(checked) => setOverwriteExisting(checked === true)} />
+            <span><strong>Replace existing answers</strong><small>Leave off to protect fields that already contain text.</small></span>
+          </label>
+
           <div className="popup-actions">
-            <Button className="ai-fill-button" onClick={fillFields} disabled={!canFillPage}>
+            <Button className="ai-fill-button motion-press" onClick={fillFields} disabled={!canFillPage || fillState === "filling"}>
               <span className="ai-fill-icon">
-                <Zap size={20} />
+                {fillState === "filling" ? <LoaderCircle className="popup-spin" size={20} /> : fillState === "success" ? <CheckCircle2 size={20} /> : <Zap size={20} />}
               </span>
-              <span>Fill matched fields</span>
+              <span>{fillState === "filling" ? "Filling fields…" : fillState === "success" ? "Filled successfully" : "Fill matched fields"}</span>
             </Button>
           </div>
+
+          {(fillState === "success" || fillState === "error") && (
+            <div className={fillState === "success" ? "popup-inline-feedback is-success" : "popup-inline-feedback is-error"} role={fillState === "error" ? "alert" : "status"}>
+              {fillState === "success" ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+              <span>{status}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -463,7 +498,8 @@ export function Popup() {
         <span>Your data stays local and private.</span>
       </footer>
       </section>
-    </main>
+      <Toaster position="bottom-center" closeButton={false} visibleToasts={1} />
+    </PopupLayout>
   );
 }
 
