@@ -27,6 +27,12 @@ body,
   height: 547px;
 }
 
+/* A resume upload adds a full control block above the fill action. Give the
+   fixed popup footer its own space instead of allowing it to cover the button. */
+.popup-panel:has(.resume-upload-panel) {
+  height: 680px;
+}
+
 .popup-space-background {
   background-image:
     linear-gradient(to bottom, color-mix(in srgb, var(--background) 16%, transparent), color-mix(in srgb, var(--background) 56%, transparent)),
