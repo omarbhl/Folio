@@ -923,7 +923,7 @@ button.education-timeline-content.is-active {
   object-fit: contain;
   pointer-events: none;
   position: absolute;
-  right: clamp(4rem, 13vw, 18rem);
+  right: clamp(14rem, 26vw, 32rem);
   top: -3.5rem;
   width: 15rem;
 }
