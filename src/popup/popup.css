@@ -145,12 +145,12 @@ body,
 }
 
 .popup-state-view:has(.resume-upload-panel) .popup-hero {
-  height: 105px;
+  height: 135px;
 }
 
 .popup-state-view:has(.resume-upload-panel) .popup-mascot-stage img {
   height: 120px;
-  top: -5px;
+  top: 0;
   width: 120px;
 }
 
