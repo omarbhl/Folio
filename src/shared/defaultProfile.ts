@@ -1,6 +1,6 @@
 import type { FolioProfile } from "./types";
 
-export const APP_VERSION = "1.0.1";
+export const APP_VERSION = "1.1.0";
 export const PROFILE_VERSION = 2;
 const createdAt = new Date().toISOString();
 

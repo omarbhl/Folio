@@ -6,7 +6,7 @@ Folio is a privacy-first browser extension that helps you fill job applications 
 
 > **Work in progress:** Folio is a personal project and still evolving. It is not a polished commercial product yet, and it has not been security audited. Expect rough edges while the idea keeps getting sharper.
 
-![Folio hero preview](docs/assets/folio-hero.png)
+![Folio hero preview](docs/assets/folio-github.png)
 
 ## Why Folio Exists
 
@@ -47,20 +47,20 @@ The current Manifest V3 build asks for page access so Folio can detect fields on
 
 Folio is a personal project and still a work in progress, but the core extension is already usable locally.
 
-- [x] Popup scanning and one-click autofill flow
-- [x] Local profile manager for personal info, education, experience, skills, documents, and answers
-- [x] Resume/CV document manager with tags, preview, zoom, download, default selection, and deletion confirmation
-- [x] Resume/CV attachment during autofill when websites ask for uploads
-- [x] Local JSON import/export
-- [x] Country and city selectors
-- [x] Field matching across common English and French labels
-- [x] Custom answers that can be reused for recurring application questions
-- [x] Autofill metrics for forms filled, fields filled, and estimated time saved
-- [x] Chrome extension build output
-- [ ] Nicer UI/UX settings with hand-crafted details (working on it)
-- [ ] Auto import using your resume for the first configuration
-- [ ] Better handling for complex custom dropdowns
-- [ ] Chrome Web Store packaging polish
+- [X]  Popup scanning and one-click autofill flow
+- [X]  Local profile manager for personal info, education, experience, skills, documents, and answers
+- [X]  Resume/CV document manager with tags, preview, zoom, download, default selection, and deletion confirmation
+- [X]  Resume/CV attachment during autofill when websites ask for uploads
+- [X]  Local JSON import/export
+- [X]  Country and city selectors
+- [X]  Field matching across common English and French labels
+- [X]  Custom answers that can be reused for recurring application questions
+- [X]  Autofill metrics for forms filled, fields filled, and estimated time saved
+- [X]  Chrome extension build output
+- [ ]  Nicer UI/UX settings with hand-crafted details (working on it)
+- [ ]  Auto import using your resume for the first configuration
+- [ ]  Better handling for complex custom dropdowns
+- [ ]  Chrome Web Store packaging polish
 
 ## Install Locally
 

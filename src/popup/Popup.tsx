@@ -1,23 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, FileText, Power, RefreshCw, Settings, ShieldCheck, Zap } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, FileText, LoaderCircle, Power, RefreshCw, Search, Settings, ShieldCheck, Zap } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+import { PopupLayout } from "@/layouts/popup-layout";
 import { addProfileActivity } from "../shared/activity";
-import { CraneMark } from "../shared/brand";
+import { FolioMark } from "../shared/brand";
 import { isSafeFillMatch, matchFields } from "../shared/fieldMatching";
 import { getProfile, getThemeMode, saveProfile } from "../shared/storage";
 import { applyThemeMode } from "../shared/theme";
 import type { DetectedField, DetectedUploadField, FieldMatch, FillResult, FolioProfile, ProfileDocument } from "../shared/types";
 
 type ScanState = "idle" | "scanning" | "ready";
-
-const SCANNING_MESSAGES = [
-  "Reading the page geometry...",
-  "Mapping fields into a tiny constellation...",
-  "Checking labels, placeholders, and intent...",
-  "Finding the safest places to write..."
-];
+type FillState = "idle" | "filling" | "success" | "error";
 
 const READY_MESSAGES = [
   "I found a clean path through this form.",
@@ -31,14 +29,6 @@ const EMPTY_MESSAGES = [
   "No safe matches on this page yet. Keeping the pen capped.",
   "Nothing to fill. This page is quiet for now.",
   "No confident fields found here. Folio is standing down."
-];
-
-const FILL_BUTTON_MESSAGES = [
-  "Fill matched fields",
-  "Compose the boring bits",
-  "Let Folio do the typing",
-  "Thread the form",
-  "Send the blue spark"
 ];
 
 const COUNTRY_ALIASES: Record<string, string[]> = {
@@ -73,6 +63,7 @@ export function Popup() {
   const [status, setStatus] = useState("");
   const [siteSeed, setSiteSeed] = useState(0);
   const [messageSeed] = useState(() => Date.now());
+  const [fillState, setFillState] = useState<FillState>("idle");
 
   const isEnabled = profile?.preferences.enabled ?? true;
   const fillableMatches = useMemo(() => matches.filter(isSafeFillMatch), [matches]);
@@ -94,13 +85,8 @@ export function Popup() {
     [filteredResumeDocuments, profile?.preferences.defaultResumeId, selectedResumeId]
   );
   const canFillPage = isEnabled && (fillableMatches.length > 0 || (uploadFields.length > 0 && selectedResume !== null));
-  const readyTitle = scanState === "scanning" ? "Scanning page" : canFillPage ? "Ready to fill" : "Nothing to fill";
-  const scanSummary =
-    scanState === "scanning"
-      ? pickMessage(SCANNING_MESSAGES, siteSeed + messageSeed)
-      : detectedFields.length > 0
-        ? `Detected ${detectedFields.length} fields on this page`
-        : status || pickMessage(EMPTY_MESSAGES, siteSeed + messageSeed);
+  const hasResumeUpload = isEnabled && uploadFields.length > 0;
+
   useEffect(() => {
     let removeThemeListener: () => void = () => undefined;
     getThemeMode().then((mode) => {
@@ -142,6 +128,7 @@ export function Popup() {
     }
 
     setScanState("scanning");
+    setFillState("idle");
     setStatus("");
 
     try {
@@ -163,7 +150,7 @@ export function Popup() {
       setUploadFields([]);
       setMatches([]);
       setScanState("ready");
-      setStatus(pickMessage(EMPTY_MESSAGES, siteSeed));
+      setStatus("Folio cannot inspect this browser page. Try a regular website tab.");
     }
   }, [profile, siteSeed]);
 
@@ -191,6 +178,8 @@ export function Popup() {
     }
 
     try {
+      setFillState("filling");
+      setStatus("Filling confident matches…");
       const fieldResult =
         safeMatches.length > 0
           ? ((await sendTabMessage({
@@ -233,8 +222,11 @@ export function Popup() {
       }
       const resumeMessage = resumeResult.filledCount > 0 ? ` Attached ${selectedResume?.fileName || selectedResume?.name}.` : "";
       setStatus(`Filled ${totalFilled} item${totalFilled === 1 ? "" : "s"}.${resumeMessage}`);
+      setFillState("success");
     } catch (error) {
-      setStatus(pickMessage(EMPTY_MESSAGES, siteSeed + messageSeed));
+      setStatus("Folio could not complete this fill. Your saved profile was not changed.");
+      setFillState("error");
+      toast.error("Fill could not be completed");
     }
   }
 
@@ -298,174 +290,369 @@ export function Popup() {
 
   if (loadingProfile) {
     return (
-      <main className="popup-shell">
-        <section className="popup-panel popup-loading">
-          <CraneMark className="popup-mark" />
-          <p>Loading Folio...</p>
+      <PopupLayout className="bg-background text-foreground">
+        <section className="relative grid h-[590px] place-content-center justify-items-center gap-3.5 overflow-hidden p-[18px_18px_16px] text-center [background-image:linear-gradient(to_bottom,color-mix(in_srgb,var(--background)_22%,transparent),color-mix(in_srgb,var(--background)_58%,transparent)),url('/assets/folio-space-background.png')] bg-[length:100%_100%]">
+          <FolioMark className="size-8.5 rounded-[10px]" />
+          <p className="m-0 max-w-[260px] text-xs leading-6 text-muted-foreground">Loading Folio...</p>
         </section>
-      </main>
+      </PopupLayout>
     );
   }
 
   if (!profile) {
     return (
-      <main className="popup-shell">
-        <section className="popup-panel welcome-card">
-            <CraneMark className="popup-mark hero" />
-            <span className="popup-eyebrow">Welcome to Folio</span>
-            <h1>Customize once. Apply everywhere.</h1>
-            <p>Create a local profile once, then use Folio only when you click it.</p>
-            <div className="welcome-steps" aria-label="Setup steps">
-              <span>
-                <CheckCircle2 size={14} />
-                Add contact details
-              </span>
-              <span>
-                <FileText size={14} />
-                Upload resume
-              </span>
-              <span>
-                <ShieldCheck size={14} />
-                Data stays local
-              </span>
-            </div>
-            <Button onClick={openOptions}>
-              <Settings size={16} />
-              Start setup
-            </Button>
+      <PopupLayout className="bg-background text-foreground">
+        <section className="relative grid h-[590px] place-content-center justify-items-center gap-3.5 overflow-hidden p-[18px_18px_16px] text-center [background-image:linear-gradient(to_bottom,color-mix(in_srgb,var(--background)_22%,transparent),color-mix(in_srgb,var(--background)_58%,transparent)),url('/assets/folio-space-background.png')] bg-[length:100%_100%]">
+          <FolioMark className="size-[60px] rounded-[10px]" />
+          <span className="text-[11px] font-bold tracking-[0.12em] text-brand-violet uppercase">Welcome to Folio</span>
+          <h1 className="m-0 text-2xl tracking-[-0.04em]">Customize once. Apply everywhere.</h1>
+          <p className="m-0 max-w-[260px] text-xs leading-6 text-muted-foreground">Create a local profile once, then use Folio only when you click it.</p>
+          <div className="grid gap-[7px] text-left">
+            <span className="flex items-center gap-[7px] text-[11px] text-muted-foreground">
+              <CheckCircle2 size={14} className="text-success" />
+              Add contact details
+            </span>
+            <span className="flex items-center gap-[7px] text-[11px] text-muted-foreground">
+              <FileText size={14} className="text-success" />
+              Upload resume
+            </span>
+            <span className="flex items-center gap-[7px] text-[11px] text-muted-foreground">
+              <ShieldCheck size={14} className="text-success" />
+              Data stays local
+            </span>
+          </div>
+          <Button onClick={openOptions}>
+            <Settings size={16} />
+            Start setup
+          </Button>
         </section>
-      </main>
+      </PopupLayout>
     );
   }
 
   return (
-    <main className="popup-shell">
-      <section className="popup-panel">
-      <header className="popup-header">
-        <div className="popup-brand">
-          <CraneMark className="popup-mark" />
-          <h1>Folio</h1>
-        </div>
-        <div className="popup-header-actions">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            className="popup-icon-button"
-            onClick={() => void refreshPageScan()}
-            disabled={!isEnabled || scanState === "scanning"}
-            aria-label="Refresh scan"
-            title="Refresh scan"
-          >
-            <RefreshCw size={14} className={scanState === "scanning" ? "popup-refresh-icon is-spinning" : "popup-refresh-icon"} />
-          </Button>
-          <Button type="button" variant="ghost" size="icon-xs" className="popup-icon-button" onClick={openOptions} aria-label="Open settings" title="Open settings">
-            <Settings size={15} />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            className={isEnabled ? "popup-icon-button popup-power-button is-on" : "popup-icon-button popup-power-button is-off"}
-            onClick={() => void toggleExtension(!isEnabled)}
-            aria-label={isEnabled ? "Turn Folio off" : "Turn Folio on"}
-            title={isEnabled ? "Turn Folio off" : "Turn Folio on"}
-          >
-            <Power size={14} />
-          </Button>
-        </div>
-      </header>
+    <PopupLayout className="bg-background text-foreground">
+      <section className="relative isolate flex h-[590px] flex-col overflow-hidden p-[18px_18px_16px]">
+        {/* Space Background */}
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 bg-[length:100%_100%] [background-image:linear-gradient(to_bottom,color-mix(in_srgb,var(--background)_16%,transparent),color-mix(in_srgb,var(--background)_56%,transparent)),url('/assets/folio-space-background.png')]"
+          aria-hidden="true"
+        />
 
-      {!isEnabled ? (
-        <div key="folio-off" className="popup-state-view is-off">
-          <div className="popup-state-icon">
-            <Power size={48} />
+        {/* Header */}
+        <header className="relative z-10 flex h-[42px] shrink-0 items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <FolioMark className="size-8.5 rounded-[10px]" />
+            <h1 className="m-0 text-[22px] font-[720] tracking-[-0.04em]">Folio</h1>
           </div>
-          <div className="popup-state-copy">
-            <h2>
-              Folio is <span>off</span>
-            </h2>
-            <p>Turn it on when you want Folio to scan this page and fill forms only when you ask.</p>
-          </div>
-          <Button type="button" size="sm" className="popup-off-button" onClick={() => void toggleExtension(true)}>
-            <Power size={18} />
-            Turn Folio on
-          </Button>
-        </div>
-      ) : (
-        <div key="folio-on" className="popup-state-view is-on">
-          <div className="popup-state-icon">
-            <Zap size={48} />
-            <span className="popup-sparkle one" />
-            <span className="popup-sparkle two" />
-            <span className="popup-sparkle three" />
-            <span className="popup-sparkle four" />
-          </div>
-          <div className="popup-state-copy">
-            <h2>
-              Folio is <span>on</span>
-            </h2>
-            <p>Folio will scan this page and auto-fill forms when possible.</p>
-          </div>
-
-          {uploadFields.length > 0 && (
-            <div className="resume-upload-panel">
-              <div>
-                <Label htmlFor="resume-upload-select">Resume upload</Label>
-                <p>{resumeDocuments.length > 0 ? "Choose which saved CV Folio should attach." : "Add resumes in My files to use this upload path."}</p>
-              </div>
-              {resumeTags.length > 0 && (
-                <div className="resume-tag-filter" aria-label="Filter resumes by tag">
-                  <Button type="button" variant="outline" size="xs" className={!resumeTagFilter ? "is-active" : ""} onClick={() => setResumeTagFilter("")}>
-                    All
-                  </Button>
-                  {resumeTags.map((tag) => (
-                    <Button key={tag} type="button" variant="outline" size="xs" className={resumeTagFilter === tag ? "is-active" : ""} onClick={() => setResumeTagFilter(tag)}>
-                      {tag}
-                    </Button>
-                  ))}
-                </div>
+          <div className="flex items-center gap-2.5">
+            <HeaderIconButton
+              onClick={() => void refreshPageScan()}
+              disabled={!isEnabled || scanState === "scanning"}
+              label="Refresh page scan"
+            >
+              <RefreshCw className={scanState === "scanning" ? "animate-[popup-spin_700ms_linear_infinite]" : ""} size={17} />
+            </HeaderIconButton>
+            <HeaderIconButton onClick={openOptions} label="Open settings">
+              <Settings size={17} />
+            </HeaderIconButton>
+            <HeaderIconButton
+              onClick={() => void toggleExtension(!isEnabled)}
+              label={isEnabled ? "Turn Folio off" : "Turn Folio on"}
+              className={cn(
+                isEnabled
+                  ? "!border-success !text-success !shadow-[inset_0_0_16px_color-mix(in_srgb,var(--success)_8%,transparent),0_0_14px_color-mix(in_srgb,var(--success)_12%,transparent)]"
+                  : "!border-[color-mix(in_srgb,var(--destructive)_55%,var(--border))] !text-destructive"
               )}
-              <div className="resume-upload-controls">
-                <Select value={selectedResume?.id} onValueChange={setSelectedResumeId} disabled={filteredResumeDocuments.length === 0}>
-                  <SelectTrigger id="resume-upload-select" size="sm" className="resume-select-trigger">
-                    <SelectValue placeholder="No saved resumes" />
-                  </SelectTrigger>
-                  {filteredResumeDocuments.length > 0 && (
-                    <SelectContent className="resume-select-content">
-                      <SelectGroup>
-                        {filteredResumeDocuments.map((document) => (
-                          <SelectItem key={document.id} value={document.id}>
-                            {getResumeLabel(document)}
-                          </SelectItem>
+            >
+              <Power size={17} />
+            </HeaderIconButton>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <div
+          key={isEnabled ? "folio-on" : "folio-off"}
+          className="relative flex flex-1 flex-col gap-[9px] min-h-0 animate-[popup-state-enter_var(--motion-slow)_var(--ease-emphasized)_both]"
+        >
+          {isEnabled ? (
+            <>
+              {/* ON Hero */}
+            {/* ON Hero */}
+<section
+  className={cn(
+    "relative shrink-0 flex items-center overflow-visible gap-4",
+    hasResumeUpload ? "h-[130px]" : "h-[140px]"
+  )}
+  aria-labelledby="folio-state-title"
+>
+  {/* Mascot */}
+  <div className={cn(
+    "relative flex items-center justify-center flex-none",
+    hasResumeUpload ? "w-[42%]" : "w-auto pl-2"
+  )}>
+    <div
+      className={cn(
+        "absolute -z-10 bg-[radial-gradient(circle,color-mix(in_srgb,var(--brand-violet)_34%,transparent),transparent_68%)] blur-[12px]",
+        hasResumeUpload ? "inset-[10%_0_10%_-10%]" : "h-[120px] w-[120px]"
+      )}
+    />
+    <img
+      className={cn(
+        "relative max-w-none object-contain -rotate-2",
+        hasResumeUpload ? "h-[120px] w-auto" : "h-[130px] w-auto"
+      )}
+      src="/assets/folio-mascot.png"
+      alt=""
+    />
+  </div>
+
+  {/* Text */}
+  <div className="flex flex-col justify-center min-w-0">
+    <div className="flex min-h-8.5 w-fit items-center gap-2 rounded-full border border-success bg-[color-mix(in_srgb,var(--card)_72%,transparent)] px-3.5 text-xs whitespace-nowrap">
+      <span className="size-[7px] rounded-full bg-success shadow-[0_0_10px_color-mix(in_srgb,var(--success)_70%,transparent)]" />
+      <span>
+        Folio is <strong className="text-success">ON</strong>
+      </span>
+    </div>
+    <h2 id="folio-state-title" className="m-0 mt-3 text-[25px] leading-[1.05] font-[720] tracking-[-0.045em] whitespace-nowrap">
+      Folio is <span className="text-success">active</span>
+    </h2>
+    <p className="m-0 mt-1 text-xs leading-4.5 text-muted-foreground">
+      Folio checks this page and fills only when you choose.
+    </p>
+  </div>
+</section>
+
+              {/* Controls */}
+              <div className="flex flex-1 flex-col gap-[9px] min-h-0 overflow-hidden">
+                {/* Scan Card */}
+                <button
+                  type="button"
+                  className="flex min-h-[72px] w-full shrink-0 items-center gap-3 rounded-[14px] border border-[color-mix(in_srgb,var(--border)_76%,transparent)] bg-[color-mix(in_srgb,var(--card)_78%,transparent)] px-3.5 py-2.5 text-left text-inherit shadow-[inset_0_1px_0_color-mix(in_srgb,var(--foreground)_3%,transparent),0_10px_24px_color-mix(in_srgb,var(--background)_52%,transparent)] [transition:border-color_var(--motion-base)_var(--ease-standard),background-color_var(--motion-base)_var(--ease-standard),transform_var(--motion-fast)_var(--ease-standard)] hover:not-disabled:bg-[color-mix(in_srgb,var(--accent)_70%,transparent)] hover:not-disabled:border-[color-mix(in_srgb,var(--primary)_50%,var(--border))] active:not-disabled:scale-[0.99] disabled:cursor-default disabled:opacity-100"
+                  onClick={() => void refreshPageScan()}
+                  disabled={!isEnabled || scanState === "scanning"}
+                >
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--brand-violet)_30%,var(--border))] bg-[color-mix(in_srgb,var(--brand-violet)_10%,var(--card))] text-brand-violet [&_svg]:size-[21px]">
+                    {scanState === "scanning" ? (
+                      <LoaderCircle className="animate-[popup-spin_700ms_linear_infinite]" />
+                    ) : canFillPage ? (
+                      <CheckCircle2 />
+                    ) : (
+                      <Search />
+                    )}
+                  </span>
+                  <span className="block min-w-0 flex-1">
+                    <strong className="block text-[13px] font-bold text-foreground">
+                      {scanState === "scanning"
+                        ? "Checking this page"
+                        : canFillPage
+                          ? `${fillableMatches.length + uploadFields.length} item${fillableMatches.length + uploadFields.length === 1 ? "" : "s"} ready`
+                          : "No fillable form found"}
+                    </strong>
+                    <small className="mt-1 line-clamp-2 block text-[11px] leading-[1.45] text-muted-foreground">
+                      {!isEnabled
+                        ? "Folio cannot inspect this browser page. Try a regular website tab."
+                        : scanState === "scanning"
+                          ? "Looking for safe field matches…"
+                          : canFillPage
+                            ? `${detectedFields.length} fields detected on this page.`
+                            : status || "Open a regular website tab and refresh."}
+                    </small>
+                  </span>
+                  <ChevronRight className="size-[19px] shrink-0 text-brand-violet" />
+                </button>
+
+                {/* Resume Upload */}
+                {uploadFields.length > 0 && (
+                  <div className="flex w-full flex-col gap-2 rounded-[14px] border border-[color-mix(in_srgb,var(--border)_76%,transparent)] bg-[color-mix(in_srgb,var(--card)_78%,transparent)] px-3.5 py-3 text-left shadow-[inset_0_1px_0_color-mix(in_srgb,var(--foreground)_3%,transparent),0_10px_24px_color-mix(in_srgb,var(--background)_52%,transparent)]">
+                    <div>
+                      <Label htmlFor="resume-upload-select" className="text-xs">
+                        Resume upload
+                      </Label>
+                      <p className="mt-[3px] text-[10px] leading-[1.4] text-muted-foreground">
+                        {resumeDocuments.length > 0 ? "Choose which saved CV Folio should attach." : "Add resumes in My files to use this upload path."}
+                      </p>
+                    </div>
+                    {resumeTags.length > 0 && (
+                      <div className="flex flex-wrap gap-[5px]" aria-label="Filter resumes by tag">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="xs"
+                          className={cn("rounded-full text-[10px]", !resumeTagFilter && "border-primary text-primary")}
+                          onClick={() => setResumeTagFilter("")}
+                        >
+                          All
+                        </Button>
+                        {resumeTags.map((tag) => (
+                          <Button
+                            key={tag}
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            className={cn("rounded-full text-[10px]", resumeTagFilter === tag && "border-primary text-primary")}
+                            onClick={() => setResumeTagFilter(tag)}
+                          >
+                            {tag}
+                          </Button>
                         ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  )}
-                </Select>
+                      </div>
+                    )}
+                    <Select value={selectedResume?.id ?? ""} onValueChange={setSelectedResumeId} disabled={filteredResumeDocuments.length === 0}>
+                      <SelectTrigger id="resume-upload-select" size="sm" className="w-full bg-background">
+                        <SelectValue placeholder="No saved resumes" />
+                      </SelectTrigger>
+                      {filteredResumeDocuments.length > 0 && (
+                        <SelectContent className="max-w-[320px]">
+                          <SelectGroup>
+                            {filteredResumeDocuments.map((document) => (
+                              <SelectItem key={document.id} value={document.id}>
+                                {getResumeLabel(document)}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      )}
+                    </Select>
+                  </div>
+                )}
+
+                {/* Overwrite Switch */}
+                <div className="flex min-h-[72px] w-full shrink-0 items-center gap-3 rounded-[14px] border border-[color-mix(in_srgb,var(--border)_76%,transparent)] bg-[color-mix(in_srgb,var(--card)_78%,transparent)] px-3.5 py-2.5 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--foreground)_3%,transparent),0_10px_24px_color-mix(in_srgb,var(--background)_52%,transparent)] [&_[data-slot=switch]]:size-auto [&_[data-slot=switch]]:h-6 [&_[data-slot=switch]]:w-[42px] [&_[data-slot=switch]]:shrink-0 [&_[data-slot=switch]]:border-border [&_[data-slot=switch]]:bg-input [&_[data-slot=switch][data-state=checked]]:bg-success [&_[data-slot=switch-thumb]]:size-5">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--brand-violet)_30%,var(--border))] bg-[color-mix(in_srgb,var(--brand-violet)_10%,var(--card))] text-brand-violet [&_svg]:size-[21px]">
+                    <ShieldCheck />
+                  </span>
+                  <label htmlFor="overwrite-existing" className="block min-w-0 flex-1">
+                    <strong className="block text-[13px] font-bold text-foreground">Replace existing answers</strong>
+                    <small className="mt-1 line-clamp-2 block text-[11px] leading-[1.45] text-muted-foreground">
+                      Leave off to protect fields that already contain text.
+                    </small>
+                  </label>
+                  <Switch id="overwrite-existing" checked={overwriteExisting} onCheckedChange={setOverwriteExisting} aria-label="Replace existing answers" />
+                </div>
+
+                {/* Spacer */}
+                <div className="flex-1 min-h-0" />
+              </div>
+            </>
+          ) : (
+            /* OFF Hero — fills available space and centers */
+            <div className="flex flex-1 flex-col items-center justify-center gap-5">
+              <div className="relative flex h-[240px] w-full items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-[180px] w-[180px] bg-[radial-gradient(circle,color-mix(in_srgb,var(--brand-violet)_34%,transparent),transparent_68%)] blur-[16px]" />
+                </div>
+                <img
+                  className="relative h-full w-auto object-contain"
+                  src="/assets/folio-mascot-sleeping.png"
+                  alt=""
+                />
+              </div>
+              <div className="flex flex-col items-center gap-2 text-center">
+                <div className="flex min-h-8.5 items-center gap-2 rounded-full border border-destructive bg-[color-mix(in_srgb,var(--card)_72%,transparent)] px-3.5 text-xs whitespace-nowrap">
+                  <span className="size-[7px] rounded-full bg-destructive shadow-[0_0_10px_color-mix(in_srgb,var(--destructive)_70%,transparent)]" />
+                  <span>
+                    Folio is <strong className="text-destructive">OFF</strong>
+                  </span>
+                </div>
+                <h2 className="m-0 text-[25px] leading-[1.05] font-[720] tracking-[-0.045em]">
+                  Folio is <span className="text-destructive">paused</span>
+                </h2>
+                <p className="m-0 max-w-[240px] text-xs leading-4.5 text-muted-foreground">
+                  Turn Folio on when you want to check this page and fill forms.
+                </p>
               </div>
             </div>
           )}
 
-          <div className="popup-actions">
-            <Button className="ai-fill-button" onClick={fillFields} disabled={!canFillPage}>
-              <span className="ai-fill-icon">
-                <Zap size={20} />
+          {/* Fill / Toggle Button (always at bottom) */}
+          <div className="shrink-0">
+            <Button
+              className={cn(
+                "motion-press !h-[54px] !w-full !rounded-xl !border !text-base !font-bold !text-foreground [transition:filter_var(--motion-base)_var(--ease-standard)] hover:not-disabled:!filter-[brightness(1.08)_saturate(1.08)] disabled:!opacity-[0.72] disabled:!filter-[saturate(0.72)]",
+                isEnabled
+                  ? "!border-[color-mix(in_srgb,var(--primary)_62%,var(--border))] !bg-[linear-gradient(135deg,var(--brand-violet),color-mix(in_srgb,var(--primary)_72%,var(--brand-violet)))] !shadow-[0_10px_24px_color-mix(in_srgb,var(--brand-violet)_28%,transparent),inset_0_1px_0_color-mix(in_srgb,var(--foreground)_22%,transparent)]"
+                  : "!border-[color-mix(in_srgb,var(--destructive)_72%,var(--border))] !bg-[linear-gradient(135deg,var(--destructive),color-mix(in_srgb,var(--destructive)_62%,var(--brand-violet)))] !shadow-[0_10px_24px_color-mix(in_srgb,var(--destructive)_24%,transparent),inset_0_1px_0_color-mix(in_srgb,var(--foreground)_22%,transparent)]"
+              )}
+              onClick={isEnabled ? fillFields : () => void toggleExtension(true)}
+              disabled={isEnabled && (!canFillPage || fillState === "filling")}
+            >
+              <span className="inline-flex items-center gap-2">
+                {!isEnabled ? (
+                  <Power size={20} />
+                ) : fillState === "filling" ? (
+                  <LoaderCircle className="animate-[popup-spin_700ms_linear_infinite]" size={20} />
+                ) : fillState === "success" ? (
+                  <CheckCircle2 size={20} />
+                ) : (
+                  <Zap size={20} />
+                )}
+                <span>
+                  {!isEnabled
+                    ? "Turn Folio on"
+                    : fillState === "filling"
+                      ? "Filling fields…"
+                      : fillState === "success"
+                        ? "Filled successfully"
+                        : "Fill matched fields"}
+                </span>
               </span>
-              <span>Fill matched fields</span>
             </Button>
           </div>
-        </div>
-      )}
 
-      <footer className={isEnabled ? "popup-privacy is-on" : "popup-privacy"}>
-        <ShieldCheck size={18} />
-        <span>Your data stays local and private.</span>
-      </footer>
+          {/* Error Message */}
+          {fillState === "error" && (
+            <div
+              className="flex w-full shrink-0 items-center gap-2 rounded-[10px] border border-[color-mix(in_srgb,var(--destructive)_30%,var(--border))] bg-[color-mix(in_srgb,var(--destructive)_10%,var(--card))] px-2.5 py-2 text-left text-[11px] leading-[1.4] text-destructive"
+              role="alert"
+            >
+              <AlertCircle size={15} />
+              <span>{status}</span>
+            </div>
+          )}
+        </div>
       </section>
-    </main>
+    </PopupLayout>
   );
 }
+
+/* ------------------------------------------------------------------ */
+// Helper component for header icon buttons
+function HeaderIconButton({
+  children,
+  onClick,
+  disabled,
+  label,
+  className
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className={cn(
+        "!size-8.5 !rounded-full !border-border !bg-[color-mix(in_srgb,var(--card)_42%,transparent)] !p-0 !text-muted-foreground [transition:color_var(--motion-base)_var(--ease-standard),background-color_var(--motion-base)_var(--ease-standard),border-color_var(--motion-base)_var(--ease-standard),transform_var(--motion-fast)_var(--ease-standard)] hover:!bg-accent hover:!text-foreground active:not-disabled:scale-[0.94] [&_svg]:!size-[17px]",
+        className
+      )}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+    >
+      {children}
+    </Button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+// Utilities
 
 async function sendTabMessage(message: unknown, injectContentScript = false): Promise<unknown> {
   const tab = await getActiveTab();
@@ -538,5 +725,7 @@ function getResumeLabel(document: ProfileDocument): string {
 }
 
 function getDocumentTags(documents: ProfileDocument[]): string[] {
-  return Array.from(new Set(documents.flatMap((document) => document.tags))).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  return Array.from(new Set(documents.flatMap((document) => document.tags)))
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
 }

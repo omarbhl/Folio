@@ -1,5 +1,6 @@
 export type DocumentType = "resume" | "coverLetter" | "portfolio" | "other";
 export type ThemeMode = "light" | "dark" | "auto";
+export type OnboardingPath = "resume" | "manual";
 
 export type ProfilePath =
   | "personal.firstName"
@@ -112,6 +113,13 @@ export interface FolioProfile {
   documents: ProfileDocument[];
   metrics: ProfileMetrics;
   preferences: AutofillPreferences;
+}
+
+export interface OnboardingDraft {
+  profile: FolioProfile;
+  step: number;
+  path: OnboardingPath;
+  updatedAt: string;
 }
 
 export interface DetectedField {
