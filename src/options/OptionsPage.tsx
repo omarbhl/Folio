@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Star,
   Sun,
   Tags,
   Trash2,
@@ -127,7 +128,7 @@ const navItems: Array<{ id: SectionId; label: string; description: string; icon:
 const SECONDS_SAVED_PER_FIELD = 8;
 const SECONDS_SAVED_PER_FORM_REVIEW = 20;
 const GITHUB_REPO_URL = "https://github.com/omarbhl/Folio";
-const GITHUB_REPO_API_URL = "https://api.github.com/repos/omarbhl/Folio";
+const CHROME_WEB_STORE_URL = "https://chromewebstore.google.com/detail/cihiibkhfaieiegbhmneibchdmhhdgap?utm_source=item-share-cb";
 
 type LocationOption = {
   value: string;
@@ -163,7 +164,6 @@ export function OptionsPage() {
   const [fileTagFilter, setFileTagFilter] = useState("");
   const [previewZoom, setPreviewZoom] = useState(1);
   const [documentToDelete, setDocumentToDelete] = useState<ProfileDocument | null>(null);
-  const [githubStarCount, setGithubStarCount] = useState<number | null>(null);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingPath, setOnboardingPath] = useState<OnboardingPath>("resume");
   const [isUploadingResume, setIsUploadingResume] = useState(false);
@@ -368,33 +368,6 @@ export function OptionsPage() {
       setSelectedExperienceIndex(profile.experience.length - 1);
     }
   }, [profile.experience.length, selectedExperienceIndex]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetch(`${GITHUB_REPO_API_URL}?t=${Date.now()}`, {
-      cache: "no-store",
-      headers: {
-        Accept: "application/vnd.github+json",
-        "Cache-Control": "no-cache"
-      },
-      signal: controller.signal
-    })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((repo: unknown) => {
-        const stars = getGitHubStarCount(repo);
-        if (typeof stars === "number") {
-          setGithubStarCount(stars);
-        }
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-      });
-
-    return () => controller.abort();
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -760,7 +733,12 @@ export function OptionsPage() {
               <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" aria-label="Star Folio on GitHub">
                 <Github size={16} />
                 <span>Star Folio</span>
-                <strong>{githubStarCount === null ? "..." : formatCompactCount(githubStarCount)}</strong>
+              </a>
+            </Button>
+            <Button asChild variant="outline" className="web-store-rate-button">
+              <a href={CHROME_WEB_STORE_URL} target="_blank" rel="noreferrer" aria-label="Rate Folio in the Chrome Web Store">
+                <Star size={16} />
+                <span>Rate us</span>
               </a>
             </Button>
             <ToggleGroup
@@ -1497,19 +1475,6 @@ function splitTags(value: string): string[] {
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
-}
-
-function getGitHubStarCount(repo: unknown): number | null {
-  if (!repo || typeof repo !== "object" || !("stargazers_count" in repo)) {
-    return null;
-  }
-
-  const stars = (repo as { stargazers_count?: unknown }).stargazers_count;
-  return typeof stars === "number" ? stars : null;
-}
-
-function formatCompactCount(value: number): string {
-  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
 function getStarterContactProgress(profile: FolioProfile): number {

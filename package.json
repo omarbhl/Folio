@@ -1,8 +1,8 @@
 {
-  "name": "folio-extension",
-  "version": "1.1.0",
+  "name": "folio-autofill-job-applications",
+  "version": "1.2.0",
   "private": true,
-  "description": "Folio - Customize once. Apply everywhere.",
+  "description": "Folio – Autofill Job Applications",
   "license": "MIT",
   "type": "module",
   "scripts": {

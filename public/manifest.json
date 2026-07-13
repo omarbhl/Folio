@@ -1,12 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Folio",
-  "version": "1.1.0",
-  "description": "Customize once. Apply everywhere.",
+  "name": "Folio – Autofill Job Applications",
+  "version": "1.2.0",
+  "description": "Autofill job applications with a private, local profile.",
   "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["https://api.github.com/*"],
   "action": {
-    "default_title": "Folio",
+    "default_title": "Folio – Autofill Job Applications",
     "default_popup": "src/popup/index.html",
     "default_icon": {
       "16": "icons/icon16.png",

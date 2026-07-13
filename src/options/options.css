@@ -824,7 +824,8 @@ button.education-timeline-content.is-active {
   white-space: nowrap;
 }
 
-.github-star-button {
+.github-star-button,
+.web-store-rate-button {
   flex: 0 0 auto;
 }
 
@@ -850,10 +851,12 @@ button.education-timeline-content.is-active {
 }
 
 .settings-page-heading {
-  align-items: start;
-  min-height: 10.5rem;
-  padding: 2.5rem 15rem 0 0;
-  position: relative;
+  align-items: center;
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr) minmax(11rem, 13.5rem);
+  min-height: 16rem;
+  padding: 2.5rem 0 1.5rem;
 }
 
 .settings-page-heading .eyebrow {
@@ -879,10 +882,8 @@ button.education-timeline-content.is-active {
   height: 13rem;
   object-fit: contain;
   pointer-events: none;
-  position: absolute;
-  right: clamp(1rem, 9vw, 9rem);
-  top: 0.25rem;
   width: 13.5rem;
+  justify-self: center;
 }
 
 .settings-workspace {
@@ -1017,24 +1018,6 @@ button.education-timeline-content.is-active {
   min-height: 19rem;
 }
 
-@media (min-width: 1180px) and (min-height: 800px) {
-  .settings-shell:has(.overview-dashboard) {
-    box-sizing: border-box;
-    height: 100svh;
-    min-height: 100svh;
-    overflow: hidden;
-  }
-
-  .settings-shell:has(.overview-dashboard) .settings-page-heading {
-    min-height: 8rem;
-  }
-
-  .settings-shell:has(.overview-dashboard) .overview-stat-card {
-    min-height: 7.75rem;
-    padding: 1rem 1.1rem;
-  }
-}
-
 .overview-completion-list {
   gap: 0;
 }
@@ -1148,7 +1131,8 @@ button.education-timeline-content.is-active {
     gap: 0.35rem;
   }
 
-  .github-star-button > span {
+  .github-star-button > span,
+  .web-store-rate-button > span {
     display: none;
   }
 
@@ -1161,6 +1145,8 @@ button.education-timeline-content.is-active {
   }
 
   .settings-page-heading {
+    display: block;
+    min-height: auto;
     padding-right: 0;
   }
 
