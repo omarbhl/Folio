@@ -8,6 +8,7 @@ import {
   FileDown,
   FilePlus2,
   FileText,
+  Github,
   GraduationCap,
   Laptop,
   LayoutDashboard,
@@ -17,7 +18,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
-  Star,
   Sun,
   Tags,
   Trash2,
@@ -29,6 +29,16 @@ import {
   ZoomOut
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -144,6 +154,7 @@ export function OptionsPage() {
   const [status, setStatus] = useState("");
   const [themeMode, setThemeMode] = useState<ThemeMode>("auto");
   const [activeSection, setActiveSection] = useState<SectionId>("overview");
+  const [pendingSection, setPendingSection] = useState<SectionId | null>(null);
   const [selectedEducationIndex, setSelectedEducationIndex] = useState(0);
   const [selectedExperienceIndex, setSelectedExperienceIndex] = useState(0);
   const [locationData, setLocationData] = useState<LocationDataApi | null>(null);
@@ -158,6 +169,7 @@ export function OptionsPage() {
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const [resumeUploadError, setResumeUploadError] = useState("");
   const isDirty = JSON.stringify(profile) !== savedSnapshot;
+  const pendingSectionLabel = navItems.find((item) => item.id === pendingSection)?.label ?? "this section";
   const estimatedSecondsSaved = profile.metrics.totalFieldsFilled * SECONDS_SAVED_PER_FIELD + profile.metrics.totalFormsFilled * SECONDS_SAVED_PER_FORM_REVIEW;
   const resumeDocuments = useMemo(() => profile.documents.filter((document) => document.type === "resume" && (document.fileName || document.name)), [profile.documents]);
   const resumeTags = useMemo(() => getDocumentTags(resumeDocuments), [resumeDocuments]);
@@ -574,6 +586,30 @@ export function OptionsPage() {
     toast.success("Profile saved", { description: "Your changes are stored locally on this device." });
   }
 
+  function requestSectionChange(nextSection: SectionId) {
+    if (nextSection === activeSection) {
+      return;
+    }
+
+    if (isDirty) {
+      setPendingSection(nextSection);
+      return;
+    }
+
+    setActiveSection(nextSection);
+  }
+
+  async function saveAndSwitchSection() {
+    const nextSection = pendingSection;
+    if (!nextSection) {
+      return;
+    }
+
+    await handleSave();
+    setActiveSection(nextSection);
+    setPendingSection(null);
+  }
+
   async function completeOnboarding() {
     await handleSave();
     await clearOnboardingDraft();
@@ -720,6 +756,13 @@ export function OptionsPage() {
           </div>
 
           <div className="topbar-actions">
+            <Button asChild variant="outline" className="github-star-button">
+              <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" aria-label="Star Folio on GitHub">
+                <Github size={16} />
+                <span>Star Folio</span>
+                <strong>{githubStarCount === null ? "..." : formatCompactCount(githubStarCount)}</strong>
+              </a>
+            </Button>
             <ToggleGroup
               type="single"
               value={themeMode}
@@ -800,7 +843,7 @@ export function OptionsPage() {
                         void handleSave();
                         return;
                       }
-                      setActiveSection(step.section);
+                      requestSectionChange(step.section);
                     }}
                   >
                     <Icon size={16} />
@@ -816,8 +859,8 @@ export function OptionsPage() {
           </section>
         )}
 
-        <Tabs className="settings-workspace" orientation="vertical" value={activeSection} onValueChange={(value) => setActiveSection(value as SectionId)}>
-          <TabsList className="settings-tabs" aria-label="Settings categories">
+        <Tabs className="settings-workspace" value={activeSection} onValueChange={(value) => requestSectionChange(value as SectionId)}>
+          <TabsList variant="line" className="settings-tabs" aria-label="Settings categories">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -828,24 +871,6 @@ export function OptionsPage() {
               );
             })}
           </TabsList>
-
-          <aside className="settings-sidebar-footer">
-            <div className="review-card">
-              <Star size={20} />
-              <strong>Give us a review</strong>
-              <p>Star us on GitHub or leave a review on the store.</p>
-              <Button asChild size="sm">
-                <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
-                  Leave a review
-                  <span className="sr-only"> ({githubStarCount === null ? "loading stars" : `${formatCompactCount(githubStarCount)} GitHub stars`})</span>
-                </a>
-              </Button>
-            </div>
-            <div className="sidebar-privacy">
-              <ShieldCheck size={20} />
-              <span>Your data stays<br />local and private.</span>
-            </div>
-          </aside>
 
         {status && (
           <div className="status" role="status">
@@ -885,7 +910,7 @@ export function OptionsPage() {
                         {overviewCompletionRows.map((row) => {
                           const Icon = row.icon;
                           return (
-                            <button type="button" className="overview-completion-row" key={row.label} onClick={() => setActiveSection(row.section)}>
+                            <button type="button" className="overview-completion-row" key={row.label} onClick={() => requestSectionChange(row.section)}>
                               <Icon size={16} />
                               <span>{row.label}</span>
                               <Progress value={row.value} className="overview-completion-progress" />
@@ -895,7 +920,7 @@ export function OptionsPage() {
                           );
                         })}
                       </div>
-                      <button type="button" className="overview-complete-profile" onClick={() => setActiveSection(isProfileComplete ? "overview" : "personal")}>
+                      <button type="button" className="overview-complete-profile" onClick={() => requestSectionChange(isProfileComplete ? "overview" : "personal")}>
                         <span>
                           <strong>{isProfileComplete ? "Profile complete" : "Complete your profile"}</strong>
                           <small>{isProfileComplete ? "Folio is ready for applications" : "Get the most out of Folio"}</small>
@@ -1446,6 +1471,20 @@ export function OptionsPage() {
           </div>
           </main>
         </Tabs>
+        <AlertDialog open={pendingSection !== null} onOpenChange={(open) => !open && setPendingSection(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Save changes before switching?</AlertDialogTitle>
+              <AlertDialogDescription>
+                You have unsaved profile updates. Save them locally before opening {pendingSectionLabel}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep editing</AlertDialogCancel>
+              <AlertDialogAction onClick={() => void saveAndSwitchSection()}>Save and switch</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
           </>
         )}
       <Toaster position="bottom-right" closeButton />

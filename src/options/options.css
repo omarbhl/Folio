@@ -779,59 +779,53 @@ button.education-timeline-content.is-active {
 .settings-shell {
   display: grid;
   gap: 1.5rem;
+  margin: 0 auto;
+  max-width: 96rem;
   min-height: 100svh;
-  padding: 5rem 4.25rem 4.5rem 19.75rem;
+  padding: 2rem clamp(1.5rem, 4vw, 4.25rem) 4.5rem;
   position: relative;
 }
 
 .settings-shell::before {
-  background: color-mix(in srgb, var(--card) 74%, transparent);
-  border: 1px solid var(--border);
-  border-radius: 1.25rem;
-  bottom: 1rem;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--foreground) 4%, transparent), var(--shadow-lg);
-  content: "";
-  left: 0.875rem;
-  position: fixed;
-  top: 0.75rem;
-  width: 16.25rem;
-  z-index: 1;
+  display: none;
 }
 
 .settings-topbar {
-  display: contents;
+  display: flex;
+  flex-wrap: nowrap;
+  min-height: 3rem;
 }
 
 .settings-brand {
-  gap: 1rem;
-  left: 2.1rem;
-  position: fixed;
-  top: 2rem;
-  z-index: 4;
+  gap: 0.8rem;
+  position: static;
 }
 
 .brand-mark {
-  border-radius: 1rem;
-  height: 4rem;
-  width: 4rem;
+  border-radius: 0.8rem;
+  height: 2.75rem;
+  width: 2.75rem;
 }
 
 .settings-brand strong {
-  font-size: 1.8rem;
+  font-size: 1.25rem;
   font-weight: 720;
   letter-spacing: -0.045em;
 }
 
 .settings-brand span {
-  display: none;
+  display: block;
 }
 
 .topbar-actions {
-  gap: 0.75rem;
-  position: fixed;
-  right: 1.75rem;
-  top: 1.75rem;
-  z-index: 6;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  position: static;
+  white-space: nowrap;
+}
+
+.github-star-button {
+  flex: 0 0 auto;
 }
 
 .theme-toggle {
@@ -857,8 +851,8 @@ button.education-timeline-content.is-active {
 
 .settings-page-heading {
   align-items: start;
-  min-height: 11rem;
-  padding: 1rem 17rem 0 0;
+  min-height: 10.5rem;
+  padding: 2.5rem 15rem 0 0;
   position: relative;
 }
 
@@ -882,123 +876,74 @@ button.education-timeline-content.is-active {
 }
 
 .options-hero-mascot {
-  height: 14.5rem;
+  height: 13rem;
   object-fit: contain;
   pointer-events: none;
   position: absolute;
-  right: clamp(14rem, 26vw, 32rem);
-  top: -3.5rem;
-  width: 15rem;
+  right: clamp(1rem, 9vw, 9rem);
+  top: 0.25rem;
+  width: 13.5rem;
 }
 
 .settings-workspace {
-  display: contents;
+  display: grid;
+  gap: 1.25rem;
 }
 
 .settings-tabs {
-  align-items: stretch;
+  align-items: center;
   background: transparent;
   border: 0;
+  border-bottom: 1px solid var(--border);
   border-radius: 0;
   box-shadow: none;
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  height: auto !important;
-  justify-content: flex-start !important;
-  left: 2.1rem;
-  overflow: visible;
+  flex-direction: row;
+  gap: 0.15rem;
+  justify-content: center;
+  overflow-x: auto;
   padding: 0;
-  position: fixed;
-  top: 8.25rem;
-  width: 13.75rem;
-  z-index: 4;
+  position: static;
+  scrollbar-width: none;
+  width: 100%;
 }
 
 .settings-tabs [data-slot="tabs-trigger"] {
-  border-radius: 0.75rem;
+  border-radius: 0;
   color: var(--muted-foreground);
-  gap: 0.85rem;
+  gap: 0.5rem;
   flex: 0 0 auto;
-  justify-content: flex-start;
-  min-height: 3.25rem;
-  padding-inline: 1rem;
-  width: 100%;
+  justify-content: center;
+  min-height: 3rem;
+  padding-inline: 0.85rem;
+  position: relative;
 }
 
 .settings-tabs [data-slot="tabs-trigger"] svg {
-  height: 1.25rem;
-  width: 1.25rem;
+  height: 1rem;
+  width: 1rem;
 }
 
 .settings-tabs [data-slot="tabs-trigger"][data-active] {
-  background: linear-gradient(135deg, var(--brand-violet), color-mix(in srgb, var(--primary) 58%, var(--brand-violet)));
-  box-shadow: 0 0.6rem 1.5rem color-mix(in srgb, var(--brand-violet) 18%, transparent);
+  background: transparent;
+  box-shadow: none;
   color: var(--foreground);
 }
 
-.settings-sidebar-footer {
-  bottom: 2.1rem;
-  display: grid;
-  gap: 1.2rem;
-  left: 2.1rem;
-  position: fixed;
-  width: 13.75rem;
-  z-index: 4;
-}
-
-.review-card {
-  background: linear-gradient(145deg, color-mix(in srgb, var(--brand-violet) 15%, var(--card)), color-mix(in srgb, var(--card) 84%, transparent));
-  border: 1px solid color-mix(in srgb, var(--brand-violet) 25%, var(--border));
-  border-radius: 0.9rem;
-  display: grid;
-  gap: 0.7rem;
-  padding: 1rem;
-}
-
-.review-card > svg {
-  color: var(--brand-violet);
-}
-
-.review-card strong {
-  font-size: 0.95rem;
-}
-
-.review-card p {
-  color: var(--muted-foreground);
-  font-size: 0.76rem;
-  line-height: 1.45;
-  margin: 0;
-}
-
-.review-card [data-slot="button"] {
-  background: linear-gradient(135deg, var(--brand-violet), var(--primary));
-  color: var(--foreground);
-  width: 100%;
-}
-
-.sidebar-privacy {
-  align-items: center;
-  border-top: 1px solid var(--border);
-  color: var(--muted-foreground);
-  display: flex;
-  font-size: 0.76rem;
-  gap: 0.8rem;
-  line-height: 1.45;
-  padding: 1.2rem 0.75rem 0;
-}
-
-.sidebar-privacy svg {
-  color: var(--success);
-  flex: 0 0 auto;
+.settings-tabs [data-slot="tabs-trigger"][data-active]::after {
+  background: linear-gradient(90deg, var(--brand-violet), var(--primary));
+  border-radius: 999px 999px 0 0;
+  bottom: -1px;
+  content: "";
+  height: 2px;
+  left: 0.75rem;
+  position: absolute;
+  right: 0.75rem;
 }
 
 .status {
   background: color-mix(in srgb, var(--success) 10%, var(--card));
-  position: fixed;
-  right: 1.75rem;
-  top: 5.4rem;
-  z-index: 7;
+  position: static;
 }
 
 .settings-main {
@@ -1147,8 +1092,7 @@ button.education-timeline-content.is-active {
 
 @media (max-width: 1180px) {
   .settings-shell {
-    padding-right: 2rem;
-    padding-left: 18.5rem;
+    padding: 2rem clamp(1.5rem, 4vw, 3rem) 3rem;
   }
 
   .overview-stat-grid {
@@ -1157,16 +1101,6 @@ button.education-timeline-content.is-active {
 
   .options-hero-mascot {
     opacity: 0.65;
-  }
-}
-
-@media (max-height: 850px) and (min-width: 861px) {
-  .review-card {
-    display: none;
-  }
-
-  .settings-sidebar-footer {
-    bottom: 1.5rem;
   }
 }
 
@@ -1180,51 +1114,40 @@ button.education-timeline-content.is-active {
 
 @media (max-width: 860px) {
   .settings-shell {
-    padding: 6rem 1.25rem 3rem;
+    padding: 1.25rem 1.25rem 2.5rem;
   }
 
-  .settings-shell::before,
-  .settings-sidebar-footer {
-    display: none;
+  .settings-topbar {
+    align-items: flex-start;
   }
 
   .settings-brand {
-    left: 1.25rem;
-    top: 1rem;
+    gap: 0.6rem;
   }
 
   .brand-mark {
-    height: 3rem;
-    width: 3rem;
+    height: 2.25rem;
+    width: 2.25rem;
   }
 
   .settings-brand strong {
-    font-size: 1.5rem;
+    font-size: 1.05rem;
   }
 
   .topbar-actions {
-    right: 1.25rem;
-    top: 1rem;
+    gap: 0.35rem;
+  }
+
+  .github-star-button > span {
+    display: none;
   }
 
   .settings-tabs {
-    align-items: center;
-    background: color-mix(in srgb, var(--card) 90%, transparent);
-    border: 1px solid var(--border);
-    bottom: auto;
-    flex-direction: row;
-    height: auto;
-    left: 1.25rem;
-    overflow-x: auto;
-    padding: 0.3rem;
-    right: 1.25rem;
-    top: 5rem;
-    width: auto;
+    justify-content: flex-start;
   }
 
   .settings-tabs [data-slot="tabs-trigger"] {
     min-height: 2.4rem;
-    width: auto;
   }
 
   .settings-page-heading {
