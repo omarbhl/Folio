@@ -252,7 +252,7 @@ body {
   padding-inline: 0.75rem;
 }
 
-.settings-tabs [data-slot="tabs-trigger"][data-active] {
+.settings-tabs [data-slot="tabs-trigger"][data-state="active"] {
   background: var(--primary);
   color: var(--primary-foreground);
   box-shadow: var(--shadow-sm);
@@ -924,13 +924,23 @@ button.education-timeline-content.is-active {
   width: 1rem;
 }
 
-.settings-tabs [data-slot="tabs-trigger"][data-active] {
-  background: transparent;
-  box-shadow: none;
+.settings-tabs [data-slot="tabs-trigger"] {
+  transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+}
+
+.settings-tabs [data-slot="tabs-trigger"]:hover:not([data-state="active"]) {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--foreground);
 }
 
-.settings-tabs [data-slot="tabs-trigger"][data-active]::after {
+.settings-tabs [data-slot="tabs-trigger"][data-state="active"] {
+  background: transparent;
+  box-shadow: none;
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.settings-tabs [data-slot="tabs-trigger"][data-state="active"]::after {
   background: linear-gradient(90deg, var(--brand-violet), var(--primary));
   border-radius: 999px 999px 0 0;
   bottom: -1px;
